@@ -298,6 +298,13 @@ config SPI_PPC4xx
 	help
 	  This selects a driver for the PPC4xx SPI Controller.
 
+config SPI_PC3XX
+	tristate "picoChip PC3XX SPI support"
+	depends on ARCH_PC3XX
+	help
+	  Enables using the SPI master controller the on picoChip PC3XX
+	  family of devices.
+
 config SPI_PXA2XX
 	tristate "PXA2xx SSP SPI master"
 	depends on (ARCH_PXA || (X86_32 && PCI)) && EXPERIMENTAL
