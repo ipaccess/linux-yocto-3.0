@@ -85,6 +85,7 @@
 #define STATUS_INT		0x0400
 #define SW_UP_RST		0x0800
 #define SW_DN_RST		0x1000
+#define WD_EN			0x4000
 #define PDM_UP_MASK		0x007
 #define PDM_DN_MASK		0x0F8
 #define PDM_CMD_MASK		0x200
@@ -124,7 +125,9 @@ struct omap_mcpdm_link {
 
 struct omap_mcpdm;
 
+/*
 extern int omap_mcpdm_set_offset(struct omap_mcpdm *mcpdm,
 		int offset1, int offset2);
+*/
 
 #endif	/* End of __OMAP_MCPDM_H__ */
