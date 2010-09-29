@@ -441,6 +441,7 @@ config GPIO_JANZ_TTL
 	  This driver provides support for driving the pins in output
 	  mode only. Input mode is not supported.
 
+
 config AB8500_GPIO
 	bool "ST-Ericsson AB8500 Mixed Signal Circuit gpio functions"
 	depends on AB8500_CORE && BROKEN
@@ -453,4 +454,14 @@ config GPIO_TPS65910
 	help
 	  Select this option to enable GPIO driver for the TPS65910
 	  chip family.
+endif
+
+comment "Other GPIO expanders"
+
+config GPIO_NXP_74HC153
+	tristate "NXP 74HC153 Dual 4-input multiplexer"
+	help
+	  Platform driver for NXP 74HC153 Dual 4-input Multiplexer. This
+	  provides a GPIO interface supporting inputs.
+
 endif
