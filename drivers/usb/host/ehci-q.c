@@ -590,6 +590,9 @@ static void qtd_list_free (
 		list_del (&qtd->qtd_list);
 		ehci_qtd_free (ehci, qtd);
 	}
+
+	if (ehci->has_synopsys_hc_bug)
+		writel((u32)ehci->async->qh_dma, &ehci->regs->async_next);
 }
 
 /*
