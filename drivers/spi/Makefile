@@ -10,6 +10,8 @@ obj-$(CONFIG_SPI_MASTER)		+= spi.o
 
 # SPI master controller drivers (bus)
 obj-$(CONFIG_SPI_ALTERA)		+= spi_altera.o
+obj-$(CONFIG_SPI_AP83)			+= ap83_spi.o
+obj-$(CONFIG_SPI_AR71XX)		+= ar71xx_spi.o
 obj-$(CONFIG_SPI_ATMEL)			+= atmel_spi.o
 obj-$(CONFIG_SPI_ATH79)			+= ath79_spi.o
 obj-$(CONFIG_SPI_BFIN)			+= spi_bfin5xx.o
@@ -27,6 +29,7 @@ obj-$(CONFIG_SPI_EP93XX)		+= ep93xx_spi.o
 obj-$(CONFIG_SPI_GPIO)			+= spi_gpio.o
 obj-$(CONFIG_SPI_IMX)			+= spi_imx.o
 obj-$(CONFIG_SPI_LM70_LLP)		+= spi_lm70llp.o
+obj-$(CONFIG_SPI_PB44)			+= pb44_spi.o
 obj-$(CONFIG_SPI_PXA2XX)		+= pxa2xx_spi.o
 obj-$(CONFIG_SPI_PXA2XX_PCI)		+= pxa2xx_spi_pci.o
 obj-$(CONFIG_SPI_OC_TINY)		+= spi_oc_tiny.o
@@ -64,6 +67,7 @@ spi_s3c24xx_hw-$(CONFIG_SPI_S3C24XX_FIQ) += spi_s3c24xx_fiq.o
 
 # SPI protocol drivers (device/link on bus)
 obj-$(CONFIG_SPI_SPIDEV)	+= spidev.o
+obj-$(CONFIG_SPI_VSC7385)	+= spi_vsc7385.o
 obj-$(CONFIG_SPI_TLE62X0)	+= tle62x0.o
 # 	... add above this line ...
 
