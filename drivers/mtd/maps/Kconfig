@@ -264,6 +264,13 @@ config MTD_LANTIQ
 	help
 	  Support for NOR flash attached to the Lantiq SoC's External Bus Unit.
 
+config MTD_AR91XX_FLASH
+	tristate "Atheros AR91xx parallel flash support"
+	depends on ATHEROS_AR71XX
+	select MTD_COMPLEX_MAPPINGS
+	help
+	  Parallel flash driver for the Atheros AR91xx based boards.
+
 config MTD_DILNETPC
 	tristate "CFI Flash device mapped on DIL/Net PC"
 	depends on X86 && MTD_CFI_INTELEXT && BROKEN
