@@ -1,5 +1,5 @@
 /*
- * Atmel MACB Ethernet Controller driver
+ * Cadence MACB/GEM Ethernet Controller driver
  *
  * Copyright (C) 2004-2006 Atmel Corporation
  *
@@ -7,7 +7,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
 #define pr_fmt(fmt) "macb: " fmt
 #include <linux/clk.h>
 #include <linux/module.h>
@@ -58,9 +57,9 @@ static void __macb_set_hwaddr(struct macb *bp)
 	u16 top;
 
 	bottom = cpu_to_le32(*((u32 *)bp->dev->dev_addr));
-	macb_writel(bp, SA1B, bottom);
+	macb_or_gem_writel(bp, SA1B, bottom);
 	top = cpu_to_le16(*((u16 *)(bp->dev->dev_addr + 4)));
-	macb_writel(bp, SA1T, top);
+	macb_or_gem_writel(bp, SA1T, top);
 }
 
 static void __init macb_get_hwaddr(struct macb *bp)
@@ -69,8 +68,8 @@ static void __init macb_get_hwaddr(struct macb *bp)
 	u16 top;
 	u8 addr[6];
 
-	bottom = macb_readl(bp, SA1B);
-	top = macb_readl(bp, SA1T);
+	bottom = macb_or_gem_readl(bp, SA1B);
+	top = macb_or_gem_readl(bp, SA1T);
 
 	addr[0] = bottom & 0xff;
 	addr[1] = (bottom >> 8) & 0xff;
@@ -572,10 +571,12 @@ static irqreturn_t macb_interrupt(int irq, void *dev_id)
 		 * Link change detection isn't possible with RMII, so we'll
 		 * add that if/when we get our hands on a full-blown MII PHY.
 		 */
-
 		if (status & MACB_BIT(ISR_ROVR)) {
 			/* We missed at least one packet */
-			bp->hw_stats.rx_overruns++;
+			if (bp->is_gem)
+				bp->hw_stats.gem.rx_overruns++;
+			else
+				bp->hw_stats.macb.rx_overruns++;
 		}
 
 		if (status & MACB_BIT(HRESP)) {
@@ -898,8 +899,8 @@ static void macb_sethashtable(struct net_device *dev)
 		mc_filter[bitnr >> 5] |= 1 << (bitnr & 31);
 	}
 
-	macb_writel(bp, HRB, mc_filter[0]);
-	macb_writel(bp, HRT, mc_filter[1]);
+	macb_or_gem_writel(bp, HRB, mc_filter[0]);
+	macb_or_gem_writel(bp, HRT, mc_filter[1]);
 }
 
 /*
@@ -921,8 +922,8 @@ static void macb_set_rx_mode(struct net_device *dev)
 
 	if (dev->flags & IFF_ALLMULTI) {
 		/* Enable all multicast mode */
-		macb_writel(bp, HRB, -1);
-		macb_writel(bp, HRT, -1);
+		macb_or_gem_writel(bp, HRB, -1);
+		macb_or_gem_writel(bp, HRT, -1);
 		cfg |= MACB_BIT(NCFGR_MTI);
 	} else if (!netdev_mc_empty(dev)) {
 		/* Enable specific multicasts */
@@ -930,8 +931,8 @@ static void macb_set_rx_mode(struct net_device *dev)
 		cfg |= MACB_BIT(NCFGR_MTI);
 	} else if (dev->flags & (~IFF_ALLMULTI)) {
 		/* Disable all multicast mode */
-		macb_writel(bp, HRB, 0);
-		macb_writel(bp, HRT, 0);
+		macb_or_gem_writel(bp, HRB, 0);
+		macb_or_gem_writel(bp, HRT, 0);
 		cfg &= ~MACB_BIT(NCFGR_MTI);
 	}
 
@@ -1169,6 +1170,10 @@ static int __init macb_probe(struct platform_device *pdev)
 		goto err_out_iounmap;
 	}
 
+	/* Cadence GEM has a module ID of 2. */
+	if (MACB_BFEXT(IDNUM, macb_readl(bp, MID)) == 0x2)
+		bp->is_gem = 1;
+
 	dev->netdev_ops = &macb_netdev_ops;
 	netif_napi_add(dev, &bp->napi, macb_poll, 64);
 	dev->ethtool_ops = &macb_ethtool_ops;
@@ -1192,15 +1197,16 @@ static int __init macb_probe(struct platform_device *pdev)
 
 	if (pdata && pdata->is_rmii)
 #if defined(CONFIG_ARCH_AT91)
-		macb_writel(bp, USRIO, (MACB_BIT(RMII) | MACB_BIT(CLKEN)) );
+		macb_or_gem_writel(bp, USRIO, (MACB_BIT(RMII) |
+					       MACB_BIT(CLKEN)));
 #else
-		macb_writel(bp, USRIO, 0);
+		macb_or_gem_writel(bp, USRIO, 0);
 #endif
 	else
 #if defined(CONFIG_ARCH_AT91)
-		macb_writel(bp, USRIO, MACB_BIT(CLKEN));
+		macb_or_gem_writel(bp, USRIO, MACB_BIT(CLKEN));
 #else
-		macb_writel(bp, USRIO, MACB_BIT(MII));
+		macb_or_gem_writel(bp, USRIO, MACB_BIT(MII));
 #endif
 
 	bp->tx_pending = DEF_TX_RING_PENDING;
@@ -1217,8 +1223,9 @@ static int __init macb_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, dev);
 
-	netdev_info(dev, "Atmel MACB at 0x%08lx irq %d (%pM)\n",
-		dev->base_addr, dev->irq, dev->dev_addr);
+	netdev_info(dev, "Cadence %s at 0x%08lx irq %d (%pM)\n",
+		    bp->is_gem ? "GEM" : "MACB", dev->base_addr,
+		    dev->irq, dev->dev_addr);
 
 	phydev = bp->phy_dev;
 	netdev_info(dev, "attached PHY driver [%s] "
@@ -1329,6 +1336,6 @@ module_init(macb_init);
 module_exit(macb_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Atmel MACB Ethernet driver");
+MODULE_DESCRIPTION("Cadence MACB/GEM Ethernet driver");
 MODULE_AUTHOR("Haavard Skinnemoen (Atmel)");
 MODULE_ALIAS("platform:macb");
