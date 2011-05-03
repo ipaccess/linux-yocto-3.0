@@ -371,6 +371,7 @@ int __devinit bgpio_init(struct bgpio_chip *bgc,
 			 void __iomem *dirin,
 			 bool big_endian)
 {
+	struct bgpio_pdata *pdata = dev_get_platdata(dev);
 	int ret;
 
 	if (!is_power_of_2(sz))
@@ -385,6 +386,9 @@ int __devinit bgpio_init(struct bgpio_chip *bgc,
 	bgc->gc.label = dev_name(dev);
 	bgc->gc.base = -1;
 	bgc->gc.ngpio = bgc->bits;
+
+	if (pdata)
+		bgc->gc.names = pdata->names;
 
 	ret = bgpio_setup_io(bgc, dat, set, clr);
 	if (ret)

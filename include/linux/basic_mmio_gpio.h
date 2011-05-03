@@ -21,6 +21,7 @@
 struct bgpio_pdata {
 	int base;
 	int ngpio;
+	const char *const *names;
 };
 
 struct device;
