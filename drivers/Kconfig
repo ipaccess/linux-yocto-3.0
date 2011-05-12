@@ -108,6 +108,8 @@ source "drivers/dma/Kconfig"
 
 source "drivers/dca/Kconfig"
 
+source "drivers/picochip/Kconfig"
+
 source "drivers/auxdisplay/Kconfig"
 
 source "drivers/uio/Kconfig"
