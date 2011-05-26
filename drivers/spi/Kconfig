@@ -298,11 +298,11 @@ config SPI_PPC4xx
 	help
 	  This selects a driver for the PPC4xx SPI Controller.
 
-config SPI_PC3XX
-	tristate "picoChip PC3XX SPI support"
-	depends on ARCH_PC3XX
+config SPI_PICOXCELL
+	tristate "Picochip picoxcell SPI support"
+	depends on ARCH_PICOXCELL
 	help
-	  Enables using the SPI master controller the on picoChip PC3XX
+	  Enables using the SPI master controller the on Picochip picoxcell
 	  family of devices.
 
 config SPI_PXA2XX

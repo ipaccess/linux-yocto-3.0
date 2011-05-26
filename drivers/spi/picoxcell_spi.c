@@ -27,14 +27,15 @@
 #include <asm/errno.h>
 #include <linux/spi/spi.h>
 #include <mach/hardware.h>
-#include "pc3xx_spi.h"
+
+#include "picoxcell_spi.h"
 
 /* Macros ------------------------------------------------------------------ */
 /*!
  * The name used for the platform device and driver to allow Linux to match up
  * the correct ends.
  */
-#define CARDNAME "pc302-spi"
+#define CARDNAME "picoxcell-spi"
 
 /*!
  * A name for this module
@@ -632,7 +633,7 @@ static void
 pc302spi_cs_activate(struct spi_device *spi)
 {
     struct spi_master   *master = spi->master;
-
+    u32 syscfg = axi2cfg_readl(AXI2CFG_SYSCFG_REG_OFFSET);
     u32 syscfg_mask = (AXI2CFG_DECODE_MUX_0 |
                        AXI2CFG_DECODE_MUX_1 |
                        AXI2CFG_DECODE_MUX_2 |
@@ -649,18 +650,19 @@ pc302spi_cs_activate(struct spi_device *spi)
     /* Sort out the SPI/EBI chip select muxing.
      * Note: Set all chip select muxing to be SPI
      */
-    syscfg_update(syscfg_mask, 0);
+    syscfg &= ~syscfg_mask;
+    axi2cfg_writel(syscfg, AXI2CFG_SYSCFG_REG_OFFSET);
 }
 
 static void
 pc302spi_cs_deactivate(struct spi_device *spi)
 {
     struct spi_master   *master = spi->master;
-
     u32 syscfg_mask = (AXI2CFG_DECODE_MUX_0 |
                        AXI2CFG_DECODE_MUX_1 |
                        AXI2CFG_DECODE_MUX_2 |
                        AXI2CFG_DECODE_MUX_3);
+    u32 syscfg = axi2cfg_readl(AXI2CFG_SYSCFG_REG_OFFSET);
 
     /* Make sure the SPI is disabled */
     spi_iowrite16(master, PC302_SPI_DISABLE,
@@ -675,7 +677,8 @@ pc302spi_cs_deactivate(struct spi_device *spi)
     /* Sort out the SPI/EBI chip select muxing.
      * Note: Set all chip select muxing to be EBI
      */
-    syscfg_update(syscfg_mask, syscfg_mask);
+    syscfg |= syscfg_mask;
+    axi2cfg_writel(syscfg, AXI2CFG_SYSCFG_REG_OFFSET);
 }
 
 static int
