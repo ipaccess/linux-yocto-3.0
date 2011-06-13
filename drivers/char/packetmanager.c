@@ -1127,6 +1127,7 @@ pktman_handle_msg(struct file *filp,
 out_abort_msg:
 	if (msg)
 		pktman_abort_msg(pman, msg);
+	pman->buf.wptr = old_start_idx;
 out:
 
 	if (0 == ret && (filp->f_flags & O_NONBLOCK))
