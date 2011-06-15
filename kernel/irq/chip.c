@@ -142,10 +142,8 @@ EXPORT_SYMBOL_GPL(irq_get_irq_data);
 static void irq_state_clr_disabled(struct irq_desc *desc)
 {
 #ifdef CONFIG_PPC_QEMU
-	struct irq_desc *desc = irq_data_to_desc(irq);
-
-	if (!(desc->status & IRQ_DELAYED_DISABLE))
-		desc->chip->mask(irq);
+	if (!(desc->status_use_accessors & IRQ_DELAYED_DISABLE))
+		desc->irq_data.chip->irq_mask(&desc->irq_data);
 #else
 	irqd_clear(&desc->irq_data, IRQD_IRQ_DISABLED);
 #endif /* CONFIG_PPC_QEMU */
