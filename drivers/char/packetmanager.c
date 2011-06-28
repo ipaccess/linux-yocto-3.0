@@ -327,7 +327,8 @@ pktman_buf_add(struct pktman_buf *buf,
 		return -EFAULT;
 
 	if (start_idx)
-		*start_idx = pktman_buf_offset(buf, buf->wptr);
+		*start_idx = buf->wptr;
+
 	buf->wptr += count;
 
 	/*
