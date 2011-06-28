@@ -82,7 +82,7 @@ static struct {
 	unsigned long		    present_map[BITS_TO_LONGS(PKTMAN_MAX_DEVICES)];
 } pktman = {
 	.devno		    	    = MKDEV(PKTMAN_MAJOR, 0),
-	.lock		    	    = __SPIN_LOCK_UNLOCKED(pktman_lock),
+	.lock		    	    = __SPIN_LOCK_UNLOCKED(pktman.lock),
 	.devices	    	    = LIST_HEAD_INIT(pktman.devices),
 };
 
