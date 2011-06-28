@@ -627,6 +627,7 @@ pktman_transfer(struct pktman_dev *pman,
 	unsigned nsgs = 0, rptr = pktman_buf_offset(&pman->buf, pman->buf.rptr);
 	size_t bytes_added = 0;
 
+	nbytes = min(nbytes, pman->buf.buf_sz);
 	sg_init_table(pman->xfer_sg, (nbytes / PAGE_SIZE) + 2);
 
 	while (bytes_added < nbytes) {
