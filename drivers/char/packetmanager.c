@@ -177,10 +177,6 @@ struct pktman_kreq {
 					     * The position in the in_progress
 					     * list.
 					     */
-	struct list_head	    children;/*
-					      * Child nodes. Once they have
-					      * completed, we can do the DMA.
-					      */
 	struct scatterlist	    sg[2];  /*
 					     * Where the plaintext is in the
 					     * FIFO.
