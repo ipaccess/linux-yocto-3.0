@@ -1884,6 +1884,8 @@ static int __devinit spacc_probe(struct platform_device *pdev)
 				engine->algs[i].alg.cra_name);
 	}
 
+	pm_runtime_suspend(&pdev->dev);
+
 	return ret;
 }
 
@@ -1899,6 +1901,8 @@ static int __devexit spacc_remove(struct platform_device *pdev)
 		list_del(&alg->entry);
 		crypto_unregister_alg(&alg->alg);
 	}
+
+	pm_runtime_disable(&pdev->dev);
 
 	clk_put(engine->clk);
 
