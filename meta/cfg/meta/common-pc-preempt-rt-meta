@@ -1,0 +1,388 @@
+# _reloc_dir /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg
+
+# _mark common_pc_preempt_rt_1df78f4f5b06cb07ad1d335f2f3703bf start
+# _mark preempt_rt_44fc2232e0b753eb20a6f21fe404acb2 start
+# _mark standard_5ddcc19fd4fd4756c2262a8a9db88f7c start
+# _mark base_9a2df990f589575f19c0bba899006bf7 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/ktypes/base/base.cfg
+# _branch_begin yocto
+# _mark base_9a2df990f589575f19c0bba899006bf7 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/ktypes/base
+# _branch_begin standard
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/ktypes/standard/standard.cfg
+# _mark kgdb_2604be89b7fb00dc22717a851d6a2de0 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/kgdb/kgdb.cfg
+# _mark kgdb_2604be89b7fb00dc22717a851d6a2de0 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/kgdb
+# _git tag kgdb
+# _mark lttng_ed4d073249062aa47986c922dbe21296 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/lttng/lttng.cfg
+# _mark lttng_ed4d073249062aa47986c922dbe21296 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/lttng
+# _mark arm_98e93a7e4e45345804ab11e58ba13bb5 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/arm/arm-ARM-EABI-socketcall.patch
+# _mark arm_98e93a7e4e45345804ab11e58ba13bb5 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/arm
+# _git tag arm
+# _mark mips_9b6acd42991a7f69e3e393e93d58b905 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/mips/malta-uhci-quirks-make-allowance-for-slow-4k-e-c.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/mips/4kc-cache-tlb-hazard-tlbp-cache-coherency.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/mips/mips-support-preemptible-kernel.patch
+# _mark mips_9b6acd42991a7f69e3e393e93d58b905 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/mips
+# _git tag mips
+# _mark powerpc_65b8a2bf8946258a4ba5dab9c7480e48 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/powerpc/powerpc-Add-unwind-information-for-SPE-registers-of-.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/powerpc/powerpc-kexec-fix-for-powerpc64.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/powerpc/powerpc-add-crtsavres.o-to-archprepare-for-kbuild.patch
+# _mark powerpc_65b8a2bf8946258a4ba5dab9c7480e48 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/arch/powerpc
+# _git tag powerpc
+# _mark hrt_d4d4931c49dbd5537c63187663a0eff3 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/hrt/hrt.cfg
+# _mark hrt_d4d4931c49dbd5537c63187663a0eff3 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/hrt
+# _mark ftrace_b6fb6237d846ba4b4ddbc7b9690f9298 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/ftrace/ftrace.cfg
+# _mark ftrace_b6fb6237d846ba4b4ddbc7b9690f9298 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/ftrace
+# _mark patches_f15a8d5233777951b31c5c18c994232e start
+# _mark drivers_576b2e34301e70540f002b15c0f80ac0 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/drivers/MIPS-i8259-Use-struct-syscore_ops-instead-of-sysdevs.patch
+# _mark drivers_576b2e34301e70540f002b15c0f80ac0 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/drivers
+# _mark build_09adb70b4610d4d436a86223e04321d0 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/build/arm-serialize-build-targets.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/build/powerpc-serialize-image-targets.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/build/kbuild-exclude-meta-directory-from-distclean-processi.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/build/kbuild-add-meta-files-to-the-ignore-li.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/build/modpost-mask-trivial-warnings.patch
+# _mark build_09adb70b4610d4d436a86223e04321d0 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/build
+# _mark exports_2fbf7099c3a3f9f2757cb6ace5f4f2da start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/exports/cleanup-a.out-header-for-export.patch
+# _mark exports_2fbf7099c3a3f9f2757cb6ace5f4f2da end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/exports
+# _mark boot_22c9ca7770735c0e82b074531b0d6447 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/boot/NFS-allow-nfs-root-mount-to-use-alternate-rpc-ports.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/boot/mount_root-clarify-error-messages-for-when-no-rootfs.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/boot/check-console-device-file-on-fs-when-booting.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/boot/nfs-Allow-default-io-size-to-be-configured.patch
+# _mark boot_22c9ca7770735c0e82b074531b0d6447 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/boot
+# _mark net_5d8048d4948878a5b5b13347a5ce45e3 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/net/Resolve-jiffies-wrapping-about-arp.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/net/fix-leap-second-message-hang.patch
+# _mark net_5d8048d4948878a5b5b13347a5ce45e3 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/net
+# _mark debug_9d21d3b4708db5851f56f394460e9927 start
+# _mark debug_9d21d3b4708db5851f56f394460e9927 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/debug
+# _mark misc_516e65261d680c8e04e0a5c1191eb066 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/misc/vmware-include-jiffies.h.patch
+# _mark misc_516e65261d680c8e04e0a5c1191eb066 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches/misc
+# _mark patches_f15a8d5233777951b31c5c18c994232e end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/patches
+# _mark initramfs_99e40339f318201f9be6d20e328f66d5 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/initramfs/initramfs-add-wrapper.patch
+# _mark initramfs_99e40339f318201f9be6d20e328f66d5 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/initramfs
+# _mark cgroups_134e1badc2caf90d9bfeab78b00185f1 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/cgroups/cgroups.cfg
+# _mark namespaces_c54b007facf61dc190f4a6886d7d2d95 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/namespaces/namespaces.cfg
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/namespaces/namespaces-experimental.cfg
+# _mark namespaces_c54b007facf61dc190f4a6886d7d2d95 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/namespaces
+# _mark cgroups_134e1badc2caf90d9bfeab78b00185f1 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/cgroups
+# _mark kexec_76944a4c13b1f07ba3886da20d085e5d start
+# _mark kexec_76944a4c13b1f07ba3886da20d085e5d end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/kexec
+# _mark vfat_95a9cc03cf8e4c83d136e2fef6b8d9ca start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/vfat/FAT-Add-CONFIG_VFAT_FS_NO_DUALNAMES-option.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/vfat/FAT-Add-CONFIG_VFAT_NO_CREATE_WITH_LONGNAMES-option.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/vfat/FAT-Added-FAT_NO_83NAME.patch
+# _mark vfat_95a9cc03cf8e4c83d136e2fef6b8d9ca end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/vfat
+# _mark kvm_37f982e26095ddd837b486e8662ea806 start
+# _mark kvm_37f982e26095ddd837b486e8662ea806 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/kvm
+# _mark tipc_c1143b1002be212fd725d5781baeb4a5 start
+# _mark tipc_c1143b1002be212fd725d5781baeb4a5 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/tipc
+# _mark xip_3e00a6bfe06a5e2cdb162e59cbc33568 start
+# _mark xip_3e00a6bfe06a5e2cdb162e59cbc33568 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/xip
+# _mark oprofile_8bfaf0d545edd4ba18807f34f5193c28 start
+# _mark oprofile_8bfaf0d545edd4ba18807f34f5193c28 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/oprofile
+# _mark fuse_641472c13f8f132f0bc836de5389e584 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/fuse/fuse.cfg
+# _mark fuse_641472c13f8f132f0bc836de5389e584 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/fuse
+# _mark devtmpfs_676f2a9bff3f675238f5066abc0d1a26 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/cfg/devtmpfs.cfg
+# _mark devtmpfs_676f2a9bff3f675238f5066abc0d1a26 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/cfg
+# _mark debugfs_c1d915bd36a6a9f5fa9cb831c9fed5ec start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/debugfs/debugfs.cfg
+# _mark debugfs_c1d915bd36a6a9f5fa9cb831c9fed5ec end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/debugfs
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/ktypes/standard/perf-force-include-of-stdbool.h.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/ktypes/standard/perf-hard-code-NO_LIBPERL-NO_LIBPYTHON.patch
+# _mark standard_5ddcc19fd4fd4756c2262a8a9db88f7c end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/ktypes/standard
+# _branch_begin preempt-rt
+# _mark rt_3ebe180479f26e09dd600faf0a5168e6 start
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/linus-3.0-rc7.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/ftrace-hash-fix.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-ide-fix-irq-flags-madness.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-floppy-use-timer-del-sync.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mips-sibyte-fix-irq-chip.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mips-ftrace-fix-non-dynamic-crappola.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-kprobes-remove-bogus-preempt-enable.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drm-sigh.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drm-more-moronic-crap.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-separate-the-scheduler-entry-for-preemption.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-move-blk_schedule_flush_plug-out-of-__schedule.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/block-shorten-interrupt-disabled-regions.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-distangle-worker-accounting-from-rq-3elock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/watchdog-madness.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rtmutex-debug-cleanup.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/arm-mark-pmu-interupt-no-thread.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/arm-allow-irq-threading.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mips-loongson-mark-cascade-interrupts-non-thread.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mips-mark-cascade-interrupts-nothread.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mips-allow-irq-threading.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/powerpc-85xx-mark-cascade-irq-no-thread.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/power-allow-irq-threading.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-create-schedule-preempt-disabled.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-use-schedule-preempt-disabled.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/kprobes-use-raw-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/percpu-cpunter-raw-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-convert-cgroups-release-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/proportions-raw-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/trace-convert-various-locks-to-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/prink-convert-logbuf-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-thread-group-cputimer-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sema-make-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rwsem-make-inner-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/timer-stats-raw-table-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/latency-top-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/video-convert-vga-console-lock-to-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/oprofile-fslock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/acpi-convert-c3lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-mce-cmc-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/powerpc-uic-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mips-make-die-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-dca-convert-dcalock-to-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/arm-raw_lock-conversions.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/dmar-make-register-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/dmar-mark-dmar-irq-no-thread.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/pci-intr-remapping-make-irte-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/dmar-make-qi-lock-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/signals-do-not-wake-self.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/posix-timers-no-broadcast.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/signals-allow-rt-tasks-to-cache-one-sigqueue-struct.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-rename-=rtmutex-set-prio-to-task-setprio.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-warn-on-throttle.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/generic-cmpxchg-use-raw-local-irq.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/lock-debugging-clean-up-rtmutex-debug.h.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-random-reduce-preempt-disabled-region.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/fs-add-missing-rcu-protection.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/arm-at91-pit-remove-irq-handler-when-clock-is-unused.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/clocksource-tclib-allow-higher-clockrates.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-net-tulip-add-missing-pci-disable.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-net-8139-disable-irq-nosync.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-net-ehea-mark-rx-irq-no-thread.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-net-at91-make-mdio-protection-rt-safe.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/preempt-mark-legitimated-no-resched-sites.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-prepare-pf-disable-discoupling.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/arch-use-pagefault-disabled.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/highmem-explicitly-disable-preemption.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/filemap-fix-up.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-remove-preempt-count-from-pf.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-highmem-warn.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/suspend-prevernt-might-sleep-splats.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/of-fixup-recursive-locking.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/of-convert-devtree-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/list-add-list-last-entry.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-page-alloc-use-list-last-entry.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-slab-move-debug-out.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-use-task-allowed-accessor.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-remove-useless-preempt-disable-in-sched-fork.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-copy-cpumask-in-one-place.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/pid-h-include-atomic-h.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/jdb-shared-state-bits.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/net-netfilter-use-proper-rw-init.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/net-flip-lock-dep-thingy.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/softirq-thread-do-softirq.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/softirq-split-out-code.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/arm-enable-interrupts-in-signal-code.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mips-enable-interrupts-in-signal.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-io-apic-migra-no-unmask.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-32-fix-signal-crap.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rcu-reduce-lock-section.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/locking-various-init-fixes.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/seqlock-remove-unused-functions.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/seqlock-use-seqcount.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/seqlock-raw-seqlock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/timekeeping-covert-xtimelock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rwsem-implement-anon-rwsems.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/fs-convert-i-alloc-sem-to-rw-anon.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/xfs-convert-mr-lock-to-rw-anon.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/latency-hist.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/hwlatdetect.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/localversion.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rt-preempt-base-config.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/bug-rt-dependend-variants.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/local-irq-rt-depending-variants.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/preempt-nort-rt-variants.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/ata-disable-interrupts-if-non-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/ide-use-nort-local-irq-variants.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/infiniband-mellanox-ib-use-nort-irq.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/inpt-gameport-use-local-irq-nort.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/acpi-use-local-irq-nort.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/user-use-local-irq-nort.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/resource-counters-use-localirq-nort.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/usb-hcd-use-local-irq-nort.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/tty-use-local-irq-nort.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-scatterlist-dont-disable-irqs-on-RT.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-cgroup-page-bit-spinlock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/fs-replace-bh_uptodate_lock-for-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/fs-jbd-replace-bh_state-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/genirq-nodebug-shirq.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/genirq-disable-random-call-on-preempt-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/genirq-disable-irqpoll-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/genirq-force-threading.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-net-fix-livelock-issues.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-net-vortex-fix-locking-issues.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-net-gianfar-make-rt-aware.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/usb-fix-mouse-problem-copying-large-data.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/local-var.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rt-local-irq-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-slab-wrap-functions.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-slab-more-lock-breaks.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-page_alloc-rt-friendly-per-cpu-pages.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-page_alloc-reduce-lock-sections-further.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-convert-swap-to-percpu-locked.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-vmstat-fix-the-irq-lock-asymetry.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-make-vmstat-rt-aware.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-memory-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-shrink-the-page-frame-to-rt-size.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-allow-slab-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/radix-tree-rt-aware.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/panic-disable-random-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/ipc-make-rt-aware.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/relay-fix-timer-madness.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/net-ipv4-route-use-locks-on-up-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/workqueue-avoid-the-lock-in-cpu-dying.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/timers-prepare-for-full-preemption.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/timers-preempt-rt-support.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/timers-fix-timer-hotplug-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/timers-mov-printk_tick-to-soft-interrupt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/timer-delay-waking-softirqs-from-the-jiffy-tick.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/hrtimers-prepare-full-preemption.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/hrtimer-fixup-hrtimer-callback-changes-for-preempt-r.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/posix-timers-thread-posix-cpu-timers-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/posix-timers-shorten-cpu-timers-thread.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/posix-timers-avoid-wakeups-when-no-timers-are-active.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-delay-put-task.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-limit-nr-migrate.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-mmdrop-delayed.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-rt-mutex-wakeup.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-prevent-idle-boost.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-might-sleep-do-not-account-rcu-depth.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-load-balance-break-on-rq-contention.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-cond-resched.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/cond-resched-softirq-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-no-work-when-pi-blocked.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-show-state-no-task-list-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/cond-resched-lock-rt-tweak.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-disable-rt-group-sched-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/stop_machine-convert-stop_machine_run-to-PREEMPT_RT.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/stomp-machine-mark-stomper-thread.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/stomp-machine-raw-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/hotplug-light-get-online-cpus.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/sched-migrate-disable.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/hotplug-use-migrate-disable.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/ftrace-migrate-disable-tracing.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/migrate-disable-rt-variant.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/net-netif_rx_ni-migrate-disable.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/softirq-sanitize-softirq-pending.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/lockdep-no-softirq-accounting-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mutex-no-spin-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/softirq-local-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/softirq-disable-softirq-stacks-for-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/local-vars-migrate-disable.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/cpu-rt-variants.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/md-raid5-percpu-handling-rt-aware.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rtmutex-lock-killable.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rtmutex-futex-prepare-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rt-mutex-add-sleeping-spinlocks-support.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/plist-remove-spinlock-types-dependency.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/spinlock-types-separate-raw.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rtmutex-avoid-include-hell.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rt-add-rt-spinlock-to-headers.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rt-add-rt-to-mutex-headers.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rwsem-add-rt-variant.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rt-add-rt-locks.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/timer-handle-idle-trylock-in-get-next-timer-irq.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rcu-force-preempt-rcu-for-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/rcu-disable-the-rcu-bh-stuff-for-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/lglocks-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-serial-cleanup-locking-for-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/drivers-serial-call-flush_to_ldisc-when-the-irq-is-t.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/fs-namespace-preemption-fix.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/fs-btrfs-locking-workaround-for-preempt-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-protect-activate-switch-mm.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/fs-block-rt-support.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/fs-ntfs-disable-interrupt-non-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-mce-timer-hrtimer.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-stackprot-no-random-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-no-highmem-with-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-use-gen-rwsem-spinlocks-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/x86-disable-debug-stack.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/workqueue-use-get-cpu-light.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/epoll-use-get-cpu-light.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mm-vmalloc-use-get-cpu-light.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/debugobjects-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/jump-label-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/skbufhead-raw-lock.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/perf-move-irq-work-to-softirq-in-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/console-make-rt-friendly.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/power-use-generic-rwsem-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/power-disable-highmem-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/arm-disable-highmem-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/arm-at91-tclib-default-to-tclib-timer-for-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/mips-disable-highmem-on-rt.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/ping-sysrq.patch
+# _patch /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt/kconfig-preempt-rt-full.patch
+# _mark rt_3ebe180479f26e09dd600faf0a5168e6 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/rt
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/ktypes/preempt-rt/preempt-rt.cfg
+# _mark preempt_rt_44fc2232e0b753eb20a6f21fe404acb2 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/ktypes/preempt-rt
+# _branch_begin common-pc
+# _mark common_pc_68a67d62e80b937c1fc0bce729af3410 start
+# _kconf hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/bsp/common-pc/common-pc.cfg
+# _kconf hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/bsp/common-pc/common-pc-gfx.cfg
+# _mark intel_e1xxxx_47755a6250973d9384b63d27817c7ce8 start
+# _kconf hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/intel-e1xxxx/intel-e1xxxx.cfg
+# _mark intel_e1xxxx_47755a6250973d9384b63d27817c7ce8 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/intel-e1xxxx
+# _mark latencytop_bf1a7584bee3bafc5bbdb71f4eeade77 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/latencytop/latencytop.cfg
+# _mark latencytop_bf1a7584bee3bafc5bbdb71f4eeade77 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/latencytop
+# _mark profiling_dbde78c10b2543de6f36592cf5cb17d5 start
+# _kconf non-hardware /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/profiling/profiling.cfg
+# _mark profiling_dbde78c10b2543de6f36592cf5cb17d5 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/features/profiling
+# _mark common_pc_68a67d62e80b937c1fc0bce729af3410 end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/bsp/common-pc
+# _mark common_pc_preempt_rt_1df78f4f5b06cb07ad1d335f2f3703bf end
+# _cfg /home/bruce/poky-kernel/linux-yocto-3.0-gen/meta/cfg/kernel-cache/bsp/common-pc
+# _branches_local: 
