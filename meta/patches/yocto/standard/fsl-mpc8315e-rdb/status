@@ -1,0 +1,3 @@
+links/kernel-cache/bsp/fsl-mpc8315e-rdb/powerpc-boot-remove-Os-from-BOOTFLAGS.patch
+links/kernel-cache/bsp/fsl-mpc8315e-rdb/fsl-mpc8315e-rdb-Enable-EEPROM.patch
+links/kernel-cache/bsp/fsl-mpc8315e-rdb/mpc8315erdb-fix-ethernet-at-boot-time.patch

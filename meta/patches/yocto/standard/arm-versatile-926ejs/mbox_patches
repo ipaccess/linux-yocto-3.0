@@ -1,0 +1,94 @@
+From 95bc50e18b33b8373193294bc39cbdf066d27158 Mon Sep 17 00:00:00 2001
+From: bo liu <bliu0@pek-lpgbuild5.(none)>
+Date: Wed, 24 Feb 2010 01:33:11 -0800
+Subject: [PATCH 1/2] arm_versatile_926ejs: add default nor flash mtd parts
+
+Create default MTD partition tables for versatile and fix the problem
+that without partition the integrator map driver will fail to register
+mtd device.
+
+Signed-off-by: Tony Liu <Bo.Liu@windriver.com>
+diff --git a/arch/arm/mach-versatile/core.c b/arch/arm/mach-versatile/core.c
+index 0c99cf0..d22b87d 100644
+--- a/arch/arm/mach-versatile/core.c
++++ b/arch/arm/mach-versatile/core.c
+@@ -22,6 +22,8 @@
+ #include <linux/device.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/platform_device.h>
++#include <linux/mtd/mtd.h>
++#include <linux/mtd/partitions.h>
+ #include <linux/sysdev.h>
+ #include <linux/interrupt.h>
+ #include <linux/amba/bus.h>
+@@ -202,9 +204,40 @@ static void versatile_flash_set_vpp(struct platform_device *pdev, int on)
+ 	__raw_writel(val, VERSATILE_FLASHCTRL);
+ }
+ 
++static struct mtd_partition versatile_partitions[] = {
++	{ /* bootloader and params */
++		.name           = "bootloader",
++		.offset         = 0,
++		.size           = SZ_256K +  SZ_128K,
++		.mask_flags     = MTD_WRITEABLE,        /* force read-only */
++	}, {
++		.name           = "kernel",
++		.offset         = MTDPART_OFS_APPEND,
++		.size           = (0x400000 - 0x60000),
++		.mask_flags     = 0,
++	}, {
++		.name           = "jffs2",
++		.offset         = MTDPART_OFS_APPEND,
++		.size           = 0x700000,
++		.mask_flags     = 0,
++	}, {
++		.name           = "cramfs",
++		.offset         = MTDPART_OFS_APPEND,
++		.size           = 0x200000,
++		.mask_flags     = 0,
++	}, {
++		.name           = "user data",
++		.offset         = MTDPART_OFS_APPEND,
++		.size           = MTDPART_SIZ_FULL,
++		.mask_flags     = 0,
++	}
++};
++
+ static struct physmap_flash_data versatile_flash_data = {
+ 	.width			= 4,
+ 	.set_vpp		= versatile_flash_set_vpp,
++	.parts                  = versatile_partitions,
++	.nr_parts               = ARRAY_SIZE(versatile_partitions),
+ };
+ 
+ static struct resource versatile_flash_resource = {
+From f0f58d065652e147f761739cbbcaf8de1b49baa3 Mon Sep 17 00:00:00 2001
+From: Tony Liu <Bo.Liu@windriver.com>
+Date: Thu, 25 Feb 2010 16:23:42 +0800
+Subject: [PATCH 2/2] arm_versatile_926ejs: kick off PrimeCell RTC PL031
+
+For RTC PL031, need to explicitly set bit "RTC start" of Control
+register(RTCCR) to enable it's counting.
+
+Signed-off-by: Tony Liu <Bo.Liu@windriver.com>
+---
+ drivers/rtc/rtc-pl031.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/drivers/rtc/rtc-pl031.c b/drivers/rtc/rtc-pl031.c
+index 0264b11..7009c49 100644
+--- a/drivers/rtc/rtc-pl031.c
++++ b/drivers/rtc/rtc-pl031.c
+@@ -163,6 +163,9 @@ static int pl031_probe(struct amba_device *adev, struct amba_id *id)
+ 		goto out_no_rtc;
+ 	}
+ 
++	/*Set bit "RTC start" in register RTCCR to enable RTC */
++	writel(0x1, ldata->base + RTC_CR);
++
+ 	return 0;
+ 
+ out_no_rtc:
+-- 
+1.6.5.2
+
