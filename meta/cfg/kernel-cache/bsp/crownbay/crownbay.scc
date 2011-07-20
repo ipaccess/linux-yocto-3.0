@@ -1,0 +1,14 @@
+kconf hardware crownbay.cfg
+
+git merge yocto/emgd
+
+include features/eg20t/eg20t.scc
+include features/intel-e1xxxx/intel-e1xxxx.scc
+include features/drm-emgd/drm-emgd.scc
+include features/dmaengine/dmaengine.scc
+include features/serial/8250.scc
+
+include features/logbuf/size-normal.scc
+
+include features/latencytop/latencytop.scc
+include features/profiling/profiling.scc

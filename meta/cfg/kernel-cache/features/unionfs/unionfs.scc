@@ -1,0 +1,4 @@
+kconf non-hardware unionfs.cfg
+
+# commented pending update to a newer version ported to 2.6.35+
+# patch unionfs-2.5.4-integration.patch
