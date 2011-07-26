@@ -603,6 +603,8 @@ static void do_signal(struct pt_regs *regs)
 	if (!user_mode(regs))
 		return;
 
+	local_irq_enable();
+
 	if (test_thread_flag(TIF_RESTORE_SIGMASK))
 		oldset = &current->saved_sigmask;
 	else
