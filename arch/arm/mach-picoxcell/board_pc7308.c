@@ -25,6 +25,26 @@
 
 static struct mtd_partition pc7308_nand_parts[] = {
 	{
+		.name	= "Nand First Stage 0",
+		.size	= SZ_128K,
+		.offset	= 0
+	},
+        {
+		.name	= "Nand First Stage 1",
+		.size	= SZ_128K,
+		.offset	= MTDPART_OFS_APPEND,
+	},
+        {
+		.name	= "Nand First Stage 2",
+		.size	= SZ_128K,
+		.offset	= MTDPART_OFS_APPEND,
+	},
+        {
+		.name	= "Nand First Stage 3",
+		.size	= SZ_128K,
+		.offset	= MTDPART_OFS_APPEND,
+	},
+	{
 		.name	= "Boot",
 		.size	= 4 * SZ_128K,
 		.offset	= 8 * SZ_128K,
