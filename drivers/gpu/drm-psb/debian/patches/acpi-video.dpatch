@@ -1,0 +1,28 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## acpi-video.dpatch by  <luca@tower>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' psb-kernel-source~/psb_drv.c psb-kernel-source/psb_drv.c
+--- psb-kernel-source~/psb_drv.c	2010-11-25 09:09:12.941771001 +0100
++++ psb-kernel-source/psb_drv.c	2010-11-25 09:10:52.729771000 +0100
+@@ -34,6 +34,7 @@
+ #include <linux/cpu.h>
+ #include <linux/notifier.h>
+ #include <linux/fb.h>
++#include <acpi/video.h>
+ 
+ int psb_drm_psb_debug = 0;
+ EXPORT_SYMBOL(psb_drm_psb_debug);
+@@ -268,6 +269,9 @@
+ 	if (psb_drm_psb_debug)
+ 		DRM_ERROR("Debug is 0x%08x\n", psb_drm_psb_debug);
+ 
++	acpi_video_register();
++	DRM_INFO("ACPI Video Interface loaded for brightness keys.");
++	
+ 	dev_priv->ta_mem_pages =
+ 	    PSB_ALIGN_TO(drm_psb_ta_mem_size * 1024, PAGE_SIZE) >> PAGE_SHIFT;
+ 	dev_priv->comm_page = alloc_page(GFP_KERNEL);

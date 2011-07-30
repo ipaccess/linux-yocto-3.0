@@ -1,0 +1,35 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 12_psb-If-not-asking-for-debug-is-an-error-I-want-to-be.dpatch by  <jbs@jbs-laptop>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: patches from Matthew Garrett - If-not-asking-for-debug...patch (clean 
+## DP: up debug error)
+
+@DPATCH@
+
+From 7051c003142ed6340b14783d7e4dc6386ccfebe8 Mon Sep 17 00:00:00 2001
+From: Matthew Garrett <mjg@redhat.com>
+Date: Mon, 2 Aug 2010 11:41:54 -0400
+Subject: [PATCH 2/3] psb: If not asking for debug is an error, I want to be right
+
+---
+ psb_drv.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/psb_drv.c b/psb_drv.c
+index 618dfcd..76b4a01 100644
+--- a/psb_drv.c
++++ b/psb_drv.c
+@@ -265,7 +265,8 @@ static int psb_do_init(struct drm_device *dev)
+ 
+ 	int ret = -ENOMEM;
+ 
+-	DRM_ERROR("Debug is 0x%08x\n", psb_drm_psb_debug);
++	if (psb_drm_psb_debug)
++		DRM_ERROR("Debug is 0x%08x\n", psb_drm_psb_debug);
+ 
+ 	dev_priv->ta_mem_pages =
+ 	    PSB_ALIGN_TO(drm_psb_ta_mem_size * 1024, PAGE_SIZE) >> PAGE_SHIFT;
+-- 
+1.7.2
+

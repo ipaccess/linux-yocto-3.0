@@ -1,0 +1,34 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 11_psb-Declare-firmware.dpatch by  <jbs@jbs-laptop>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: patches from Matthew Garrett - Declare-firmware.patch (declare module 
+## DP: firmware)
+
+@DPATCH@
+
+From 0149839482b34dc7fe399c0cc7ee4747279b5eab Mon Sep 17 00:00:00 2001
+From: Matthew Garrett <mjg@redhat.com>
+Date: Mon, 2 Aug 2010 11:16:29 -0400
+Subject: [PATCH 1/3] psb: Declare firmware
+
+---
+ psb_drv.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/psb_drv.c b/psb_drv.c
+index 2a2e8d4..618dfcd 100644
+--- a/psb_drv.c
++++ b/psb_drv.c
+@@ -55,6 +55,8 @@ int psb_init_yres;
+ extern int SII_1392;
+ #endif
+ 
++MODULE_FIRMWARE("msvdx_fw.bin");
++
+ MODULE_PARM_DESC(debug, "Enable debug output");
+ MODULE_PARM_DESC(clock_gating, "clock gating");
+ MODULE_PARM_DESC(no_fb, "Disable FBdev");
+-- 
+1.7.2
+
