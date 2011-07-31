@@ -44,7 +44,7 @@ static struct {
 	uint64_t high_threshold;
 	uint64_t emer_threshold;
 } drm_memctl = {
-	.lock = SPIN_LOCK_UNLOCKED
+  .lock = __SPIN_LOCK_UNLOCKED(drm_memctl.lock)
 };
 
 int drm_alloc_memctl(size_t size)

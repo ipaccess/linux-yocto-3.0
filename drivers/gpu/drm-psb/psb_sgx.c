@@ -301,7 +301,7 @@ int psb_emit_2d_copy_blit(struct drm_device *dev,
 
 void psb_init_2d(struct drm_psb_private *dev_priv)
 {
-	dev_priv->sequence_lock = SPIN_LOCK_UNLOCKED;
+	dev_priv->sequence_lock = __SPIN_LOCK_UNLOCKED(dev_priv->sequence_lock);
 	psb_reset(dev_priv, 1);
 	dev_priv->mmu_2d_offset = dev_priv->pg->gatt_start;
 	PSB_WSGX32(dev_priv->mmu_2d_offset, PSB_CR_BIF_TWOD_REQ_BASE);

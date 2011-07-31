@@ -1087,7 +1087,7 @@ int psb_scheduler_init(struct drm_device *dev, struct psb_scheduler *scheduler)
 	memset(scheduler, 0, sizeof(*scheduler));
 	scheduler->dev = dev;
 	mutex_init(&scheduler->task_wq_mutex);
-	scheduler->lock = SPIN_LOCK_UNLOCKED;
+	scheduler->lock = __SPIN_LOCK_UNLOCKED(scheduler->lock);
 	scheduler->idle = 1;
 
 	INIT_LIST_HEAD(&scheduler->ta_queue);

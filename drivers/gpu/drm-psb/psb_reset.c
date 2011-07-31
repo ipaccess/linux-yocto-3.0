@@ -352,7 +352,7 @@ void psb_watchdog_init(struct drm_psb_private *dev_priv)
 	struct timer_list *wt = &dev_priv->watchdog_timer;
 	unsigned long irq_flags;
 
-	dev_priv->watchdog_lock = SPIN_LOCK_UNLOCKED;
+	dev_priv->watchdog_lock = __SPIN_LOCK_UNLOCKED(dev_priv->watchdog_lock);
 	spin_lock_irqsave(&dev_priv->watchdog_lock, irq_flags);
 	init_timer(wt);
 	INIT_WORK(&dev_priv->watchdog_wq, &psb_reset_wq);

@@ -140,7 +140,7 @@ static __inline__ void *kcalloc(size_t nmemb, size_t size, int flags)
 #endif
 
 #ifndef DEFINE_SPINLOCK
-#define DEFINE_SPINLOCK(x) spinlock_t x = SPIN_LOCK_UNLOCKED
+#define DEFINE_SPINLOCK(x) spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
 #endif
 
 /* old architectures */

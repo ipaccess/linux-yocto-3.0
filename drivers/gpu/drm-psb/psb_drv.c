@@ -341,7 +341,7 @@ static int psb_do_init(struct drm_device *dev)
 		     _PSB_CC_REVISION_DESIGNER_SHIFT);
 	}
 
-	dev_priv->irqmask_lock = SPIN_LOCK_UNLOCKED;
+	dev_priv->irqmask_lock = __SPIN_LOCK_UNLOCKED(dev_priv->irqmask_lock);
 	dev_priv->fence0_irq_on = 0;
 
 	tt_pages = (pg->gatt_pages < PSB_TT_PRIV0_PLIMIT) ?

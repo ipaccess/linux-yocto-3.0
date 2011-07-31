@@ -401,7 +401,7 @@ int psb_xhw_init(struct drm_device *dev)
 	unsigned long irq_flags;
 
 	INIT_LIST_HEAD(&dev_priv->xhw_in);
-	dev_priv->xhw_lock = SPIN_LOCK_UNLOCKED;
+	dev_priv->xhw_lock = __SPIN_LOCK_UNLOCKED(dev_priv->xhw_lock);
 	atomic_set(&dev_priv->xhw_client, 0);
 	init_waitqueue_head(&dev_priv->xhw_queue);
 	init_waitqueue_head(&dev_priv->xhw_caller_queue);
