@@ -51,7 +51,6 @@
 #include <linux/pci.h>
 #include <linux/version.h>
 #include <linux/sched.h>
-#include <linux/smp_lock.h>	/* For (un)lock_kernel */
 #include <linux/mm.h>
 #include <linux/pagemap.h>
 #include <linux/i2c.h>
@@ -952,6 +951,8 @@ extern long drm_compat_ioctl(struct file *filp,
 			     unsigned int cmd, unsigned long arg);
 
 extern int drm_lastclose(struct drm_device *dev);
+
+extern struct mutex drm_global_mutex;
 
 				/* Device support (drm_fops.h) */
 extern int drm_open(struct inode *inode, struct file *filp);

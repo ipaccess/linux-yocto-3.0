@@ -663,9 +663,9 @@ long drm_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		   ((ioctl->flags & DRM_MASTER) && !file_priv->master)) {
 		retcode = -EACCES;
 	} else {
-		lock_kernel();
+		mutex_lock(&drm_global_mutex);
 		retcode = func(dev, kdata, file_priv);
-		unlock_kernel();
+		mutex_unlock(&drm_global_mutex);
 	}
 
 	if ((retcode == 0) && (cmd & IOC_OUT)) {

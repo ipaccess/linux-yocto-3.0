@@ -212,12 +212,12 @@ long i915_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (nr < DRM_COMMAND_BASE + DRM_ARRAY_SIZE(i915_compat_ioctls))
 		fn = i915_compat_ioctls[nr - DRM_COMMAND_BASE];
 
-	lock_kernel();		/* XXX for now */
+	mutex_lock(&drm_global_lock);
 	if (fn != NULL)
 		ret = (*fn)(filp, cmd, arg);
 	else
 		ret = drm_ioctl(filp->f_dentry->d_inode, filp, cmd, arg);
-	unlock_kernel();
+	mutex_unlock(&drm_global_lock);
 
 	return ret;
 }

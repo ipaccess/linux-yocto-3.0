@@ -1061,12 +1061,12 @@ long drm_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	fn = drm_compat_ioctls[nr];
 
-	lock_kernel();		/* XXX for now */
+	mutex_lock(&drm_global_lock);
 	if (fn != NULL)
 		ret = (*fn)(filp, cmd, arg);
 	else
 		ret = drm_ioctl(filp->f_dentry->d_inode, filp, cmd, arg);
-	unlock_kernel();
+	mutex_unlock(&drm_global_lock);
 
 	return ret;
 }

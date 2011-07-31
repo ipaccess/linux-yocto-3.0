@@ -38,6 +38,8 @@
 #include "drm_sarea.h"
 #include <linux/poll.h>
 
+DEFINE_MUTEX(drm_global_mutex);
+
 static int drm_open_helper(struct inode *inode, struct file *filp,
 			   struct drm_device * dev);
 
@@ -379,7 +381,7 @@ int drm_release(struct inode *inode, struct file *filp)
 	struct drm_device *dev = file_priv->head->dev;
 	int retcode = 0;
 
-	lock_kernel();
+	mutex_lock(&drm_global_mutex);
 
 	DRM_DEBUG("open_count = %d\n", dev->open_count);
 
@@ -500,16 +502,16 @@ int drm_release(struct inode *inode, struct file *filp)
 			DRM_ERROR("Device busy: %d %d\n",
 				  atomic_read(&dev->ioctl_count), dev->blocked);
 			spin_unlock(&dev->count_lock);
-			unlock_kernel();
+			mutex_unlock(&drm_global_mutex);
 			return -EBUSY;
 		}
 		spin_unlock(&dev->count_lock);
-		unlock_kernel();
+		mutex_unlock(&drm_global_mutex);
 		return drm_lastclose(dev);
 	}
 	spin_unlock(&dev->count_lock);
 
-	unlock_kernel();
+	mutex_unlock(&drm_global_mutex);
 
 	return retcode;
 }
