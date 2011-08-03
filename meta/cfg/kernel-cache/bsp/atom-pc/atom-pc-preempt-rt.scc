@@ -2,7 +2,8 @@ define KMACHINE atom-pc
 define KTYPE preempt-rt
 define KARCH i386
 
-# re-use the base preempt-rt branch
-scc_leaf ktypes/standard preempt-rt
+# no new branch required, re-use the ktypes/preempt-rt branch
 
+include ktypes/preempt-rt
+include bsp/common-pc/common-pc.scc
 include atom-pc.scc
