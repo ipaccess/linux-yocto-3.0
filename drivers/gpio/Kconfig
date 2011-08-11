@@ -463,5 +463,3 @@ config GPIO_NXP_74HC153
 	help
 	  Platform driver for NXP 74HC153 Dual 4-input Multiplexer. This
 	  provides a GPIO interface supporting inputs.
-
-endif
