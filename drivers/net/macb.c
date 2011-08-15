@@ -1664,6 +1664,10 @@ static int __init macb_probe(struct platform_device *pdev)
 	bp->pdev = pdev;
 	bp->dev = dev;
 
+	pdata = pdev->dev.platform_data;
+	if (pdata)
+		bp->quirks = pdata->quirks;
+
 	spin_lock_init(&bp->lock);
 
 	bp->pclk = clk_get(&pdev->dev, "pclk");
@@ -1718,10 +1722,6 @@ static int __init macb_probe(struct platform_device *pdev)
 	macb_writel(bp, NCFGR, config);
 
 	macb_get_hwaddr(bp);
-	pdata = pdev->dev.platform_data;
-
-	if (pdata)
-		bp->quirks = pdata->quirks;
 
 	if (pdata && pdata->is_rmii)
 #if defined(CONFIG_ARCH_AT91)
