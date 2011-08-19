@@ -657,7 +657,7 @@ static int picoxcell_fuse_hardware_init(struct platform_device *pdev)
 	}
 
 	pm_runtime_enable(&pdev->dev);
-	pm_runtime_resume(&pdev->dev);
+	pm_runtime_suspend(&pdev->dev);
 
 	return 0;
 }
@@ -718,6 +718,7 @@ out:
 
 static int __devexit picoxcell_fuse_remove(struct platform_device *pdev)
 {
+	pm_runtime_disable(&pdev->dev);
 	picoxcell_fuse_attrs_free(&pdev->dev);
 	misc_deregister(&picoxcell_fuse_miscdev);
 	picoxcell_fuse_test_mode_cleanup();
