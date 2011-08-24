@@ -79,5 +79,6 @@ GTAGS
 *.orig
 *~
 \#*#
+/meta
 /LDAT_LINUX_PATCHES
 /meta
