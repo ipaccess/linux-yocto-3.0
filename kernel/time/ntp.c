@@ -393,6 +393,10 @@ static enum hrtimer_restart ntp_leap_second(struct hrtimer *timer)
 		printk(KERN_NOTICE "Clock: %sing leap second 23:59:%d UTC\n",
 			leap == 1 ? "insert" : "delet", leap == 1 ? 60 : 59);
 
+	if (leap != 0)
+		printk(KERN_NOTICE "Clock: %sing leap second 23:59:%d UTC\n",
+			leap == 1 ? "insert" : "delet", leap == 1 ? 60 : 59);
+
 	return res;
 }
 
