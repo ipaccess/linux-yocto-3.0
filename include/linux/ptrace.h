@@ -99,6 +99,8 @@
 #include <linux/compiler.h>		/* For unlikely.  */
 #include <linux/sched.h>		/* For struct task_struct.  */
 
+extern bool __ptrace_detach(struct task_struct *tracer,
+				struct task_struct *tracee);
 
 extern long arch_ptrace(struct task_struct *child, long request,
 			unsigned long addr, unsigned long data);
