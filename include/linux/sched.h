@@ -663,8 +663,9 @@ struct signal_struct {
  * Bits in flags field of signal_struct.
  */
 #define SIGNAL_STOP_STOPPED	0x00000001 /* job control stop in effect */
-#define SIGNAL_STOP_CONTINUED	0x00000002 /* SIGCONT since WCONTINUED reap */
-#define SIGNAL_GROUP_EXIT	0x00000004 /* group exit in progress */
+#define SIGNAL_STOP_DEQUEUED	0x00000002 /* stop signal dequeued */
+#define SIGNAL_STOP_CONTINUED	0x00000004 /* SIGCONT since WCONTINUED reap */
+#define SIGNAL_GROUP_EXIT	0x00000008 /* group exit in progress */
 /*
  * Pending notifications to parent.
  */
@@ -1292,7 +1293,6 @@ struct task_struct {
 	int exit_state;
 	int exit_code, exit_signal;
 	int pdeath_signal;  /*  The signal sent when the parent dies  */
-	unsigned int group_stop;	/* GROUP_STOP_*, siglock protected */
 	/* ??? */
 	unsigned int personality;
 	unsigned did_exec:1;
@@ -1405,6 +1405,11 @@ struct task_struct {
 	unsigned int sessionid;
 #endif
 	seccomp_t seccomp;
+
+#ifdef CONFIG_UTRACE
+	struct utrace *utrace;
+	unsigned long utrace_flags;
+#endif
 
 /* Thread group tracking */
    	u32 parent_exec_id;
@@ -1812,17 +1817,6 @@ extern void thread_group_times(struct task_struct *p, cputime_t *ut, cputime_t *
 #define tsk_used_math(p) ((p)->flags & PF_USED_MATH)
 #define used_math() tsk_used_math(current)
 
-/*
- * task->group_stop flags
- */
-#define GROUP_STOP_SIGMASK	0xffff    /* signr of the last group stop */
-#define GROUP_STOP_PENDING	(1 << 16) /* task should stop for group stop */
-#define GROUP_STOP_CONSUME	(1 << 17) /* consume group stop count */
-#define GROUP_STOP_TRAPPING	(1 << 18) /* switching from STOPPED to TRACED */
-#define GROUP_STOP_DEQUEUED	(1 << 19) /* stop signal dequeued */
-
-extern void task_clear_group_stop_pending(struct task_struct *task);
-
 #ifdef CONFIG_PREEMPT_RCU
 
 #define RCU_READ_UNLOCK_BLOCKED (1 << 0) /* blocked while in RCU read-side. */
@@ -2152,6 +2146,7 @@ extern int kill_pgrp(struct pid *pid, int sig, int priv);
 extern int kill_pid(struct pid *pid, int sig, int priv);
 extern int kill_proc_info(int, struct siginfo *, pid_t);
 extern int do_notify_parent(struct task_struct *, int);
+extern void do_notify_parent_cldstop(struct task_struct *, int);
 extern void __wake_up_parent(struct task_struct *p, struct task_struct *parent);
 extern void force_sig(int, struct task_struct *);
 extern int send_sig(int, struct task_struct *, int);
