@@ -124,7 +124,7 @@ static inline int has_pending_signals(sigset_t *signal, sigset_t *blocked)
 
 static int recalc_sigpending_tsk(struct task_struct *t)
 {
-	if ((t->group_stop & GROUP_STOP_PENDING) ||
+	if (t->signal->group_stop_count > 0 ||
 	    PENDING(&t->pending, &t->blocked) ||
 	    PENDING(&t->signal->shared_pending, &t->blocked)) {
 		set_tsk_thread_flag(t, TIF_SIGPENDING);
@@ -221,83 +221,6 @@ static inline void print_dropped_signal(int sig)
 
 	printk(KERN_INFO "%s/%d: reached RLIMIT_SIGPENDING, dropped signal %d\n",
 				current->comm, current->pid, sig);
-}
-
-/**
- * task_clear_group_stop_trapping - clear group stop trapping bit
- * @task: target task
- *
- * If GROUP_STOP_TRAPPING is set, a ptracer is waiting for us.  Clear it
- * and wake up the ptracer.  Note that we don't need any further locking.
- * @task->siglock guarantees that @task->parent points to the ptracer.
- *
- * CONTEXT:
- * Must be called with @task->sighand->siglock held.
- */
-static void task_clear_group_stop_trapping(struct task_struct *task)
-{
-	if (unlikely(task->group_stop & GROUP_STOP_TRAPPING)) {
-		task->group_stop &= ~GROUP_STOP_TRAPPING;
-		__wake_up_sync_key(&task->parent->signal->wait_chldexit,
-				   TASK_UNINTERRUPTIBLE, 1, task);
-	}
-}
-
-/**
- * task_clear_group_stop_pending - clear pending group stop
- * @task: target task
- *
- * Clear group stop states for @task.
- *
- * CONTEXT:
- * Must be called with @task->sighand->siglock held.
- */
-void task_clear_group_stop_pending(struct task_struct *task)
-{
-	task->group_stop &= ~(GROUP_STOP_PENDING | GROUP_STOP_CONSUME |
-			      GROUP_STOP_DEQUEUED);
-}
-
-/**
- * task_participate_group_stop - participate in a group stop
- * @task: task participating in a group stop
- *
- * @task has GROUP_STOP_PENDING set and is participating in a group stop.
- * Group stop states are cleared and the group stop count is consumed if
- * %GROUP_STOP_CONSUME was set.  If the consumption completes the group
- * stop, the appropriate %SIGNAL_* flags are set.
- *
- * CONTEXT:
- * Must be called with @task->sighand->siglock held.
- *
- * RETURNS:
- * %true if group stop completion should be notified to the parent, %false
- * otherwise.
- */
-static bool task_participate_group_stop(struct task_struct *task)
-{
-	struct signal_struct *sig = task->signal;
-	bool consume = task->group_stop & GROUP_STOP_CONSUME;
-
-	WARN_ON_ONCE(!(task->group_stop & GROUP_STOP_PENDING));
-
-	task_clear_group_stop_pending(task);
-
-	if (!consume)
-		return false;
-
-	if (!WARN_ON_ONCE(sig->group_stop_count == 0))
-		sig->group_stop_count--;
-
-	/*
-	 * Tell the caller to notify completion iff we are entering into a
-	 * fresh group stop.  Read comment in do_signal_stop() for details.
-	 */
-	if (!sig->group_stop_count && !(sig->flags & SIGNAL_STOP_STOPPED)) {
-		sig->flags = SIGNAL_STOP_STOPPED;
-		return true;
-	}
-	return false;
 }
 
 /*
@@ -604,7 +527,7 @@ int dequeue_signal(struct task_struct *tsk, sigset_t *mask, siginfo_t *info)
 		 * is to alert stop-signal processing code when another
 		 * processor has come along and cleared the flag.
 		 */
-		current->group_stop |= GROUP_STOP_DEQUEUED;
+		tsk->signal->flags |= SIGNAL_STOP_DEQUEUED;
 	}
 	if ((info->si_code & __SI_MASK) == __SI_TIMER && info->si_sys_private) {
 		/*
@@ -809,7 +732,6 @@ static int prepare_signal(int sig, struct task_struct *p, int from_ancestor_ns)
 		rm_from_queue(SIG_KERNEL_STOP_MASK, &signal->shared_pending);
 		t = p;
 		do {
-			task_clear_group_stop_pending(t);
 			rm_from_queue(SIG_KERNEL_STOP_MASK, &t->pending);
 			wake_up_state(t, __TASK_STOPPED);
 		} while_each_thread(p, t);
@@ -837,6 +759,13 @@ static int prepare_signal(int sig, struct task_struct *p, int from_ancestor_ns)
 			signal->flags = why | SIGNAL_STOP_CONTINUED;
 			signal->group_stop_count = 0;
 			signal->group_exit_code = 0;
+		} else {
+			/*
+			 * We are not stopped, but there could be a stop
+			 * signal in the middle of being processed after
+			 * being removed from the queue.  Clear that too.
+			 */
+			signal->flags &= ~SIGNAL_STOP_DEQUEUED;
 		}
 	}
 
@@ -925,7 +854,6 @@ static void complete_signal(int sig, struct task_struct *p, int group)
 			signal->group_stop_count = 0;
 			t = p;
 			do {
-				task_clear_group_stop_pending(t);
 				sigaddset(&t->pending.signal, SIGKILL);
 				signal_wake_up(t, 1);
 			} while_each_thread(p, t);
@@ -1160,7 +1088,6 @@ int zap_other_threads(struct task_struct *p)
 	p->signal->group_stop_count = 0;
 
 	while_each_thread(p, t) {
-		task_clear_group_stop_pending(t);
 		count++;
 
 		/* Don't bother with already dead threads */
@@ -1595,30 +1522,16 @@ int do_notify_parent(struct task_struct *tsk, int sig)
 	return ret;
 }
 
-/**
- * do_notify_parent_cldstop - notify parent of stopped/continued state change
- * @tsk: task reporting the state change
- * @for_ptracer: the notification is for ptracer
- * @why: CLD_{CONTINUED|STOPPED|TRAPPED} to report
- *
- * Notify @tsk's parent that the stopped/continued state has changed.  If
- * @for_ptracer is %false, @tsk's group leader notifies to its real parent.
- * If %true, @tsk reports to @tsk->parent which should be the ptracer.
- *
- * CONTEXT:
- * Must be called with tasklist_lock at least read locked.
- */
-static void do_notify_parent_cldstop(struct task_struct *tsk,
-				     bool for_ptracer, int why)
+void do_notify_parent_cldstop(struct task_struct *tsk, int why)
 {
 	struct siginfo info;
 	unsigned long flags;
 	struct task_struct *parent;
 	struct sighand_struct *sighand;
 
-	if (for_ptracer) {
+	if (task_ptrace(tsk))
 		parent = tsk->parent;
-	} else {
+	else {
 		tsk = tsk->group_leader;
 		parent = tsk->real_parent;
 	}
@@ -1694,15 +1607,6 @@ static int sigkill_pending(struct task_struct *tsk)
 }
 
 /*
- * Test whether the target task of the usual cldstop notification - the
- * real_parent of @child - is in the same group as the ptracer.
- */
-static bool real_parent_is_ptracer(struct task_struct *child)
-{
-	return same_thread_group(child->parent, child->real_parent);
-}
-
-/*
  * This must be called with current->sighand->siglock held.
  *
  * This should be the path for all ptrace stops.
@@ -1713,12 +1617,10 @@ static bool real_parent_is_ptracer(struct task_struct *child)
  * If we actually decide not to stop at all because the tracer
  * is gone, we keep current->exit_code unless clear_code.
  */
-static void ptrace_stop(int exit_code, int why, int clear_code, siginfo_t *info)
+static void ptrace_stop(int exit_code, int clear_code, siginfo_t *info)
 	__releases(&current->sighand->siglock)
 	__acquires(&current->sighand->siglock)
 {
-	bool gstop_done = false;
-
 	if (arch_ptrace_stop_needed(exit_code, info)) {
 		/*
 		 * The arch code has something special to do before a
@@ -1739,49 +1641,21 @@ static void ptrace_stop(int exit_code, int why, int clear_code, siginfo_t *info)
 	}
 
 	/*
-	 * If @why is CLD_STOPPED, we're trapping to participate in a group
-	 * stop.  Do the bookkeeping.  Note that if SIGCONT was delievered
-	 * while siglock was released for the arch hook, PENDING could be
-	 * clear now.  We act as if SIGCONT is received after TASK_TRACED
-	 * is entered - ignore it.
+	 * If there is a group stop in progress,
+	 * we must participate in the bookkeeping.
 	 */
-	if (why == CLD_STOPPED && (current->group_stop & GROUP_STOP_PENDING))
-		gstop_done = task_participate_group_stop(current);
+	if (current->signal->group_stop_count > 0)
+		--current->signal->group_stop_count;
 
 	current->last_siginfo = info;
 	current->exit_code = exit_code;
 
-	/*
-	 * TRACED should be visible before TRAPPING is cleared; otherwise,
-	 * the tracer might fail do_wait().
-	 */
-	set_current_state(TASK_TRACED);
-
-	/*
-	 * We're committing to trapping.  Clearing GROUP_STOP_TRAPPING and
-	 * transition to TASK_TRACED should be atomic with respect to
-	 * siglock.  This hsould be done after the arch hook as siglock is
-	 * released and regrabbed across it.
-	 */
-	task_clear_group_stop_trapping(current);
-
+	/* Let the debugger run.  */
+	__set_current_state(TASK_TRACED);
 	spin_unlock_irq(&current->sighand->siglock);
 	read_lock(&tasklist_lock);
 	if (may_ptrace_stop()) {
-		/*
-		 * Notify parents of the stop.
-		 *
-		 * While ptraced, there are two parents - the ptracer and
-		 * the real_parent of the group_leader.  The ptracer should
-		 * know about every stop while the real parent is only
-		 * interested in the completion of group stop.  The states
-		 * for the two don't interact with each other.  Notify
-		 * separately unless they're gonna be duplicates.
-		 */
-		do_notify_parent_cldstop(current, true, why);
-		if (gstop_done && !real_parent_is_ptracer(current))
-			do_notify_parent_cldstop(current, false, why);
-
+		do_notify_parent_cldstop(current, CLD_TRAPPED);
 		/*
 		 * Don't want to allow preemption here, because
 		 * sys_ptrace() needs this task to be inactive.
@@ -1796,16 +1670,7 @@ static void ptrace_stop(int exit_code, int why, int clear_code, siginfo_t *info)
 		/*
 		 * By the time we got the lock, our tracer went away.
 		 * Don't drop the lock yet, another tracer may come.
-		 *
-		 * If @gstop_done, the ptracer went away between group stop
-		 * completion and here.  During detach, it would have set
-		 * GROUP_STOP_PENDING on us and we'll re-enter TASK_STOPPED
-		 * in do_signal_stop() on return, so notifying the real
-		 * parent of the group stop completion is enough.
 		 */
-		if (gstop_done)
-			do_notify_parent_cldstop(current, false, why);
-
 		__set_current_state(TASK_RUNNING);
 		if (clear_code)
 			current->exit_code = 0;
@@ -1849,7 +1714,7 @@ void ptrace_notify(int exit_code)
 
 	/* Let the debugger run.  */
 	spin_lock_irq(&current->sighand->siglock);
-	ptrace_stop(exit_code, CLD_TRAPPED, 1, &info);
+	ptrace_stop(exit_code, 1, &info);
 	spin_unlock_irq(&current->sighand->siglock);
 }
 
@@ -1862,115 +1727,64 @@ void ptrace_notify(int exit_code)
 static int do_signal_stop(int signr)
 {
 	struct signal_struct *sig = current->signal;
+	int notify;
 
-	if (!(current->group_stop & GROUP_STOP_PENDING)) {
-		unsigned int gstop = GROUP_STOP_PENDING | GROUP_STOP_CONSUME;
+	if (!sig->group_stop_count) {
 		struct task_struct *t;
 
-		/* signr will be recorded in task->group_stop for retries */
-		WARN_ON_ONCE(signr & ~GROUP_STOP_SIGMASK);
-
-		if (!likely(current->group_stop & GROUP_STOP_DEQUEUED) ||
+		if (!likely(sig->flags & SIGNAL_STOP_DEQUEUED) ||
 		    unlikely(signal_group_exit(sig)))
 			return 0;
 		/*
-		 * There is no group stop already in progress.  We must
-		 * initiate one now.
-		 *
-		 * While ptraced, a task may be resumed while group stop is
-		 * still in effect and then receive a stop signal and
-		 * initiate another group stop.  This deviates from the
-		 * usual behavior as two consecutive stop signals can't
-		 * cause two group stops when !ptraced.  That is why we
-		 * also check !task_is_stopped(t) below.
-		 *
-		 * The condition can be distinguished by testing whether
-		 * SIGNAL_STOP_STOPPED is already set.  Don't generate
-		 * group_exit_code in such case.
-		 *
-		 * This is not necessary for SIGNAL_STOP_CONTINUED because
-		 * an intervening stop signal is required to cause two
-		 * continued events regardless of ptrace.
+		 * There is no group stop already in progress.
+		 * We must initiate one now.
 		 */
-		if (!(sig->flags & SIGNAL_STOP_STOPPED))
-			sig->group_exit_code = signr;
-		else
-			WARN_ON_ONCE(!task_ptrace(current));
+		sig->group_exit_code = signr;
 
-		current->group_stop &= ~GROUP_STOP_SIGMASK;
-		current->group_stop |= signr | gstop;
 		sig->group_stop_count = 1;
-		for (t = next_thread(current); t != current;
-		     t = next_thread(t)) {
-			t->group_stop &= ~GROUP_STOP_SIGMASK;
+		for (t = next_thread(current); t != current; t = next_thread(t))
 			/*
 			 * Setting state to TASK_STOPPED for a group
 			 * stop is always done with the siglock held,
 			 * so this check has no races.
 			 */
-			if (!(t->flags & PF_EXITING) && !task_is_stopped(t)) {
-				t->group_stop |= signr | gstop;
+			if (!(t->flags & PF_EXITING) &&
+			    !task_is_stopped_or_traced(t)) {
 				sig->group_stop_count++;
 				signal_wake_up(t, 0);
 			}
-		}
 	}
-retry:
-	if (likely(!task_ptrace(current))) {
-		int notify = 0;
-
-		/*
-		 * If there are no other threads in the group, or if there
-		 * is a group stop in progress and we are the last to stop,
-		 * report to the parent.
-		 */
-		if (task_participate_group_stop(current))
-			notify = CLD_STOPPED;
-
-		__set_current_state(TASK_STOPPED);
-		spin_unlock_irq(&current->sighand->siglock);
-
-		/*
-		 * Notify the parent of the group stop completion.  Because
-		 * we're not holding either the siglock or tasklist_lock
-		 * here, ptracer may attach inbetween; however, this is for
-		 * group stop and should always be delivered to the real
-		 * parent of the group leader.  The new ptracer will get
-		 * its notification when this task transitions into
-		 * TASK_TRACED.
-		 */
-		if (notify) {
-			read_lock(&tasklist_lock);
-			do_notify_parent_cldstop(current, false, notify);
-			read_unlock(&tasklist_lock);
-		}
-
-		/* Now we don't run again until woken by SIGCONT or SIGKILL */
-		schedule();
-
-		spin_lock_irq(&current->sighand->siglock);
-	} else {
-		ptrace_stop(current->group_stop & GROUP_STOP_SIGMASK,
-			    CLD_STOPPED, 0, NULL);
-		current->exit_code = 0;
-	}
-
 	/*
-	 * GROUP_STOP_PENDING could be set if another group stop has
-	 * started since being woken up or ptrace wants us to transit
-	 * between TASK_STOPPED and TRACED.  Retry group stop.
+	 * If there are no other threads in the group, or if there is
+	 * a group stop in progress and we are the last to stop, report
+	 * to the parent.  When ptraced, every thread reports itself.
 	 */
-	if (current->group_stop & GROUP_STOP_PENDING) {
-		WARN_ON_ONCE(!(current->group_stop & GROUP_STOP_SIGMASK));
-		goto retry;
+	notify = sig->group_stop_count == 1 ? CLD_STOPPED : 0;
+	notify = tracehook_notify_jctl(notify, CLD_STOPPED);
+	/*
+	 * tracehook_notify_jctl() can drop and reacquire siglock, so
+	 * we keep ->group_stop_count != 0 before the call. If SIGCONT
+	 * or SIGKILL comes in between ->group_stop_count == 0.
+	 */
+	if (sig->group_stop_count) {
+		if (!--sig->group_stop_count)
+			sig->flags = SIGNAL_STOP_STOPPED;
+		current->exit_code = sig->group_exit_code;
+		__set_current_state(TASK_STOPPED);
 	}
-
-	/* PTRACE_ATTACH might have raced with task killing, clear trapping */
-	task_clear_group_stop_trapping(current);
-
 	spin_unlock_irq(&current->sighand->siglock);
 
+	if (notify) {
+		read_lock(&tasklist_lock);
+		do_notify_parent_cldstop(current, notify);
+		read_unlock(&tasklist_lock);
+	}
+
+	/* Now we don't run again until woken by SIGCONT or SIGKILL */
+	schedule();
+
 	tracehook_finish_jctl();
+	current->exit_code = 0;
 
 	return 1;
 }
@@ -1978,13 +1792,13 @@ retry:
 static int ptrace_signal(int signr, siginfo_t *info,
 			 struct pt_regs *regs, void *cookie)
 {
-	if (!task_ptrace(current))
+	if (!(task_ptrace(current) & PT_PTRACED))
 		return signr;
 
 	ptrace_signal_deliver(regs, cookie);
 
 	/* Let the debugger run.  */
-	ptrace_stop(signr, CLD_TRAPPED, 0, info);
+	ptrace_stop(signr, 0, info);
 
 	/* We're back.  Did the debugger cancel the sig?  */
 	signr = current->exit_code;
@@ -2039,7 +1853,6 @@ relock:
 	 * the CLD_ si_code into SIGNAL_CLD_MASK bits.
 	 */
 	if (unlikely(signal->flags & SIGNAL_CLD_MASK)) {
-		struct task_struct *leader;
 		int why;
 
 		if (signal->flags & SIGNAL_CLD_CONTINUED)
@@ -2049,26 +1862,14 @@ relock:
 
 		signal->flags &= ~SIGNAL_CLD_MASK;
 
+		why = tracehook_notify_jctl(why, CLD_CONTINUED);
 		spin_unlock_irq(&sighand->siglock);
 
-		/*
-		 * Notify the parent that we're continuing.  This event is
-		 * always per-process and doesn't make whole lot of sense
-		 * for ptracers, who shouldn't consume the state via
-		 * wait(2) either, but, for backward compatibility, notify
-		 * the ptracer of the group leader too unless it's gonna be
-		 * a duplicate.
-		 */
-		read_lock(&tasklist_lock);
-
-		do_notify_parent_cldstop(current, false, why);
-
-		leader = current->group_leader;
-		if (task_ptrace(leader) && !real_parent_is_ptracer(leader))
-			do_notify_parent_cldstop(leader, true, why);
-
-		read_unlock(&tasklist_lock);
-
+		if (why) {
+			read_lock(&tasklist_lock);
+			do_notify_parent_cldstop(current->group_leader, why);
+			read_unlock(&tasklist_lock);
+		}
 		goto relock;
 	}
 
@@ -2085,8 +1886,8 @@ relock:
 		if (unlikely(signr != 0))
 			ka = return_ka;
 		else {
-			if (unlikely(current->group_stop &
-				     GROUP_STOP_PENDING) && do_signal_stop(0))
+			if (unlikely(signal->group_stop_count > 0) &&
+			    do_signal_stop(0))
 				goto relock;
 
 			signr = dequeue_signal(current, &current->blocked,
@@ -2260,19 +2061,17 @@ void exit_signals(struct task_struct *tsk)
 	signotset(&unblocked);
 	retarget_shared_pending(tsk, &unblocked);
 
-	if (unlikely(tsk->group_stop & GROUP_STOP_PENDING) &&
-	    task_participate_group_stop(tsk))
-		group_stop = CLD_STOPPED;
+	if (unlikely(tsk->signal->group_stop_count) &&
+			!--tsk->signal->group_stop_count) {
+		tsk->signal->flags = SIGNAL_STOP_STOPPED;
+		group_stop = tracehook_notify_jctl(CLD_STOPPED, CLD_STOPPED);
+	}
 out:
 	spin_unlock_irq(&tsk->sighand->siglock);
 
-	/*
-	 * If group stop has completed, deliver the notification.  This
-	 * should always go to the real parent of the group leader.
-	 */
 	if (unlikely(group_stop)) {
 		read_lock(&tasklist_lock);
-		do_notify_parent_cldstop(tsk, false, group_stop);
+		do_notify_parent_cldstop(tsk, group_stop);
 		read_unlock(&tasklist_lock);
 	}
 }
