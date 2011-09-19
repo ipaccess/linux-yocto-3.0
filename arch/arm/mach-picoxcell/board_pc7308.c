@@ -93,10 +93,6 @@ static void pc7308_register_uarts(void)
 	if (IS_ERR(pdev))
 		pr_err("failed to add uart0\n");
 
-	pdev = picoxcell_add_uart(PICOXCELL_UART2_BASE, IRQ_UART2, 1);
-	if (IS_ERR(pdev))
-		pr_err("failed to add uart1\n");
-
 	err = picoxcell_add_uicc(PC30XX_UART3_BASE, IRQ_PC30XX_UART3, 2,
 				 false);
 	if (err)
