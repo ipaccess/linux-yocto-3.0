@@ -36,6 +36,8 @@
 
 #include <acpi/acpi_drivers.h>
 
+#include <linux/acpi_io.h>
+
 int drm_intel_ignore_acpi = 0;
 MODULE_PARM_DESC(ignore_acpi, "Ignore ACPI");
 module_param_named(ignore_acpi, drm_intel_ignore_acpi, int, 0600);
@@ -673,7 +675,7 @@ void intel_lvds_init(struct drm_device *dev)
 		pci_read_config_dword(dev->pdev, 0xFC, &OpRegion_Phys);
 
 		//dev_OpRegion =  phys_to_virt(OpRegion_Phys);
-		dev_OpRegion = ioremap(OpRegion_Phys, OpRegion_Size);
+		dev_OpRegion = acpi_os_ioremap(OpRegion_Phys, OpRegion_Size);
 		dev_OpRegionSize = OpRegion_Size;
 
 		OpRegion = (OpRegionPtr) dev_OpRegion;
@@ -686,7 +688,7 @@ void intel_lvds_init(struct drm_device *dev)
 			dev_OpRegionSize = OpRegion_NewSize;
 			
 			iounmap(dev_OpRegion);
-			dev_OpRegion = ioremap(OpRegion_Phys, OpRegion_NewSize);
+			dev_OpRegion = acpi_os_ioremap(OpRegion_Phys, OpRegion_NewSize);
 		} else {
 			iounmap(dev_OpRegion);
 			dev_OpRegion = NULL;
