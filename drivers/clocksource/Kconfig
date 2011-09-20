@@ -5,6 +5,9 @@ config CLKSRC_MMIO
 	bool
 
 config DW_APB_TIMER_PLATFORM
+	bool
 	depends on HAVE_CLK
 	select DW_APB_TIMER
+
+config DW_APB_TIMER
 	bool
