@@ -100,15 +100,15 @@ static struct pci_device_id pciidlist[] = {
 #define DRM_PSB_KMS_ON_IOCTL	DRM_IO(DRM_PSB_KMS_ON)
 
 static struct drm_ioctl_desc psb_ioctls[] = {
-	DRM_IOCTL_DEF(DRM_PSB_CMDBUF_IOCTL, psb_cmdbuf_ioctl, DRM_AUTH),
+	DRM_IOCTL_DEF(DRM_PSB_CMDBUF_IOCTL, psb_cmdbuf_ioctl, DRM_AUTH|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_PSB_XHW_INIT_IOCTL, psb_xhw_init_ioctl,
 		      DRM_ROOT_ONLY),
-	DRM_IOCTL_DEF(DRM_PSB_XHW_IOCTL, psb_xhw_ioctl, DRM_AUTH),
+	DRM_IOCTL_DEF(DRM_PSB_XHW_IOCTL, psb_xhw_ioctl, DRM_AUTH|DRM_UNLOCKED|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_PSB_SCENE_UNREF_IOCTL, drm_psb_scene_unref_ioctl,
-		      DRM_AUTH),
+		      DRM_AUTH|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_PSB_KMS_OFF_IOCTL, psbfb_kms_off_ioctl,
-		      DRM_ROOT_ONLY),
-	DRM_IOCTL_DEF(DRM_PSB_KMS_ON_IOCTL, psbfb_kms_on_ioctl, DRM_ROOT_ONLY),
+		      DRM_ROOT_ONLY|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_PSB_KMS_ON_IOCTL, psbfb_kms_on_ioctl, DRM_ROOT_ONLY|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_PSB_HW_INFO_IOCTL, psb_hw_info_ioctl, DRM_AUTH),
 };
 static int psb_max_ioctl = DRM_ARRAY_SIZE(psb_ioctls);
