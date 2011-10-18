@@ -290,6 +290,14 @@ static inline void irqd_clr_chained_irq_inprogress(struct irq_data *d)
  */
 struct irq_chip {
 	const char	*name;
+#ifndef CONFIG_GENERIC_HARDIRQS_NO_DEPRECATED
+    void        (*bus_lock)(unsigned int irq);
+    void        (*bus_sync_unlock)(unsigned int irq);
+    void        (*mask)(unsigned int irq);
+    void        (*unmask)(unsigned int irq);
+#endif
+
+
 	unsigned int	(*irq_startup)(struct irq_data *data);
 	void		(*irq_shutdown)(struct irq_data *data);
 	void		(*irq_enable)(struct irq_data *data);

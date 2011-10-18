@@ -59,14 +59,14 @@ static inline struct twl6040_irq_data *irq_to_twl6040_irq(struct twl6040 *twl604
 
 static void twl6040_irq_lock(unsigned int irq)
 {
-	struct twl6040 *twl6040 = get_irq_chip_data(irq);
+	struct twl6040 *twl6040 = irq_get_chip_data(irq);
 
 	mutex_lock(&twl6040->irq_mutex);
 }
 
 static void twl6040_irq_sync_unlock(unsigned int irq)
 {
-	struct twl6040 *twl6040 = get_irq_chip_data(irq);
+	struct twl6040 *twl6040 = irq_get_chip_data(irq);
 
 	/* write back to hardware any change in irq mask */
 	if (twl6040->irq_masks_cur != twl6040->irq_masks_cache) {
@@ -80,7 +80,7 @@ static void twl6040_irq_sync_unlock(unsigned int irq)
 
 static void twl6040_irq_unmask(unsigned int irq)
 {
-	struct twl6040 *twl6040 = get_irq_chip_data(irq);
+	struct twl6040 *twl6040 = irq_get_chip_data(irq);
 	struct twl6040_irq_data *irq_data = irq_to_twl6040_irq(twl6040, irq);
 
 	twl6040->irq_masks_cur &= ~irq_data->mask;
@@ -88,7 +88,7 @@ static void twl6040_irq_unmask(unsigned int irq)
 
 static void twl6040_irq_mask(unsigned int irq)
 {
-	struct twl6040 *twl6040 = get_irq_chip_data(irq);
+	struct twl6040 *twl6040 = irq_get_chip_data(irq);
 	struct twl6040_irq_data *irq_data = irq_to_twl6040_irq(twl6040, irq);
 
 	twl6040->irq_masks_cur |= irq_data->mask;
@@ -153,10 +153,10 @@ int twl6040_irq_init(struct twl6040 *twl6040)
 	for (cur_irq = twl6040->irq_base;
 	     cur_irq < twl6040->irq_base + ARRAY_SIZE(twl6040_irqs);
 	     cur_irq++) {
-		set_irq_chip_data(cur_irq, twl6040);
-		set_irq_chip_and_handler(cur_irq, &twl6040_irq_chip,
+		irq_set_chip_data(cur_irq, twl6040);
+		irq_set_chip_and_handler(cur_irq, &twl6040_irq_chip,
 					 handle_level_irq);
-		set_irq_nested_thread(cur_irq, 1);
+		irq_set_nested_thread(cur_irq, 1);
 
 		/* ARM needs us to explicitly flag the IRQ as valid
 		 * and will set them noprobe when we do so. */
