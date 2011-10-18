@@ -33,6 +33,7 @@
 #include <plat/omap44xx.h>
 
 #include <sound/omap-abe-dsp.h>
+#include <linux/err.h>
 
 /*-------------------------------------------------------------------------*/
 
