@@ -227,33 +227,28 @@ static int __init ksphy_init(void)
 
 	ret = phy_driver_register(&ks8001_driver);
 	if (ret)
-		goto err1;
+		phy_driver_unregister(&ks8001_driver);
 
 	ret = phy_driver_register(&ksz9021_driver);
 	if (ret)
-		goto err2;
+		phy_driver_unregister(&ksz9021_driver);
 
 	ret = phy_driver_register(&ks8737_driver);
 	if (ret)
-		goto err3;
+		phy_driver_unregister(&ks8737_driver);
+
 	ret = phy_driver_register(&ks8041_driver);
 	if (ret)
-		goto err4;
+		phy_driver_unregister(&ks8041_driver);
+
 	ret = phy_driver_register(&ks8051_driver);
 	if (ret)
-		goto err5;
+		phy_driver_unregister(&ks8051_driver);
 
-	return 0;
+	ret = phy_driver_register(&ksz8041_driver);
+	if (ret)
+		phy_driver_unregister(&ksz8041_driver);
 
-err5:
-	phy_driver_unregister(&ks8041_driver);
-err4:
-	phy_driver_unregister(&ks8737_driver);
-err3:
-	phy_driver_unregister(&ksz9021_driver);
-err2:
-	phy_driver_unregister(&ks8001_driver);
-err1:
 	return ret;
 }
 
@@ -264,6 +259,7 @@ static void __exit ksphy_exit(void)
 	phy_driver_unregister(&ksz9021_driver);
 	phy_driver_unregister(&ks8041_driver);
 	phy_driver_unregister(&ks8051_driver);
+	phy_driver_unregister(&ksz8041_driver);
 }
 
 module_init(ksphy_init);
