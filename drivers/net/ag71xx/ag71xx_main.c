@@ -610,7 +610,7 @@ void ag71xx_link_adjust(struct ag71xx *ag)
 		ag->dev->name,
 		ag71xx_rr(ag, AG71XX_REG_MAC_CFG2),
 		ag71xx_rr(ag, AG71XX_REG_MAC_IFCTL),
-		ag71xx_mii_ctrl_rr(ag));
+		ag71xx_rr(ag, AG71XX_REG_MII_CTRL));
 }
 
 static int ag71xx_open(struct net_device *dev)

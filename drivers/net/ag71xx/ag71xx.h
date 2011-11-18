@@ -347,7 +347,7 @@ static inline void ag71xx_check_reg_offset(struct ag71xx *ag, unsigned reg)
 	switch (reg) {
 	case AG71XX_REG_MAC_CFG1 ... AG71XX_REG_MAC_MFL:
 	case AG71XX_REG_MAC_IFCTL ... AG71XX_REG_TX_SM:
-	case AG71XX_REG_MII_CFG:
+	case AG71XX_REG_MII_CFG ... AG71XX_REG_MII_CTRL:
 		break;
 
 	default:
