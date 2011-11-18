@@ -1739,10 +1739,13 @@ static int do_signal_stop(int signr)
 		 * There is no group stop already in progress.
 		 * We must initiate one now.
 		 */
-		sig->group_exit_code = signr;
+		if (!(sig->flags & SIGNAL_STOP_STOPPED))
+			sig->group_exit_code = signr;
 
 		sig->group_stop_count = 1;
-		for (t = next_thread(current); t != current; t = next_thread(t))
+
+		for (t = next_thread(current); t != current;
+		     t = next_thread(t)) {
 			/*
 			 * Setting state to TASK_STOPPED for a group
 			 * stop is always done with the siglock held,
