@@ -159,8 +159,8 @@ static const struct hc_driver ehci_ar71xx_hc_driver = {
 	.hub_status_data	= ehci_hub_status_data,
 	.hub_control		= ehci_hub_control,
 #ifdef CONFIG_PM
-	.hub_suspend		= ehci_hub_suspend,
-	.hub_resume		= ehci_hub_resume,
+	.bus_suspend		= ehci_bus_suspend,
+	.bus_resume		= ehci_bus_resume,
 #endif
 	.relinquish_port	= ehci_relinquish_port,
 	.port_handed_over	= ehci_port_handed_over,
@@ -190,8 +190,8 @@ static const struct hc_driver ehci_ar91xx_hc_driver = {
 	.hub_status_data	= ehci_hub_status_data,
 	.hub_control		= ehci_hub_control,
 #ifdef CONFIG_PM
-	.hub_suspend		= ehci_hub_suspend,
-	.hub_resume		= ehci_hub_resume,
+	.bus_suspend		= ehci_bus_suspend,
+	.bus_resume		= ehci_bus_resume,
 #endif
 	.relinquish_port	= ehci_relinquish_port,
 	.port_handed_over	= ehci_port_handed_over,
