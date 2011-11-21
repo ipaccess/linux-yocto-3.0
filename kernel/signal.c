@@ -1756,6 +1756,7 @@ static int do_signal_stop(int signr)
 				sig->group_stop_count++;
 				signal_wake_up(t, 0);
 			}
+		}
 	}
 	/*
 	 * If there are no other threads in the group, or if there is
