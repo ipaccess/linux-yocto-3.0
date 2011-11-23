@@ -862,8 +862,8 @@ picoif_ioctl_multi_reg_req( struct picoif_multi_reg_req __user *user_req,
         for(i = 0; i < num_transfers; i++)
         {
             sg_init_one( &sgl, bounce,
-                         min( ( multi_reg_req.count - words_so_far ) *
-                         sizeof( u32 ), PICOIF_MAX_TRANSFER_SIZE ) );
+                         min( (unsigned)(( multi_reg_req.count - words_so_far ) *
+                         sizeof( u32 )), (unsigned) PICOIF_MAX_TRANSFER_SIZE ) );
             sg_mark_end( &sgl );
 
             ret = copy_from_user( bounce, &multi_reg_req.buf[ words_so_far ],
