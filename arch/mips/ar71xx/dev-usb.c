@@ -64,7 +64,7 @@ static struct platform_device ar71xx_ohci_device = {
 };
 
 /*
- * EHCI (USB full speed host controller)
+ * EHCI (USB high/full speed host controller)
  */
 static struct resource ar71xx_ehci_resources[] = {
 	[0] = {
@@ -128,16 +128,26 @@ static void __init ar7240_usb_setup(void)
 	/* WAR for HW bug. Here it adjusts the duration between two SOFS */
 	ar71xx_usb_ctrl_wr(USB_CTRL_REG_FLADJ, 0x3);
 
-	if (ar71xx_soc == AR71XX_SOC_AR7241 || ar71xx_soc == AR71XX_SOC_AR7242) {
-		ar71xx_ehci_data.is_ar91xx = 1;
-		ar71xx_ehci_device.resource = ar7240_ohci_resources;
-		ar71xx_ehci_device.num_resources = ARRAY_SIZE(ar7240_ohci_resources);
-		platform_device_register(&ar71xx_ehci_device);
-	} else {
-		ar71xx_ohci_device.resource = ar7240_ohci_resources;
-		ar71xx_ohci_device.num_resources = ARRAY_SIZE(ar7240_ohci_resources);
-		platform_device_register(&ar71xx_ohci_device);
-	}
+	ar71xx_ohci_device.resource = ar7240_ohci_resources;
+	ar71xx_ohci_device.num_resources = ARRAY_SIZE(ar7240_ohci_resources);
+	platform_device_register(&ar71xx_ohci_device);
+}
+
+static void __init ar7241_usb_setup(void)
+{
+	ar71xx_device_start(AR724X_RESET_USBSUS_OVERRIDE);
+	mdelay(10);
+
+	ar71xx_device_start(AR724X_RESET_USB_HOST);
+	mdelay(10);
+
+	ar71xx_device_start(AR724X_RESET_USB_PHY);
+	mdelay(10);
+
+	ar71xx_ehci_data.is_ar91xx = 1;
+	ar71xx_ehci_device.resource = ar7240_ohci_resources;
+	ar71xx_ehci_device.num_resources = ARRAY_SIZE(ar7240_ohci_resources);
+	platform_device_register(&ar71xx_ehci_device);
 }
 
 static void __init ar91xx_usb_setup(void)
@@ -155,13 +165,57 @@ static void __init ar91xx_usb_setup(void)
 	platform_device_register(&ar71xx_ehci_device);
 }
 
+static void __init ar933x_usb_setup(void)
+{
+	ar71xx_device_reset_rmw(0, AR933X_RESET_USBSUS_OVERRIDE);
+	mdelay(10);
+
+	ar71xx_device_reset_rmw(AR933X_RESET_USB_HOST,
+				AR933X_RESET_USBSUS_OVERRIDE);
+	mdelay(10);
+
+	ar71xx_device_reset_rmw(AR933X_RESET_USB_PHY,
+				AR933X_RESET_USBSUS_OVERRIDE);
+	mdelay(10);
+
+	ar71xx_ehci_data.is_ar91xx = 1;
+	platform_device_register(&ar71xx_ehci_device);
+}
+
+static void __init ar934x_usb_setup(void)
+{
+	u32 bootstrap;
+
+	bootstrap = ar71xx_reset_rr(AR934X_RESET_REG_BOOTSTRAP);
+	if (bootstrap & AR934X_BOOTSTRAP_USB_MODE_DEVICE)
+		return;
+
+	ar71xx_device_stop(AR934X_RESET_USBSUS_OVERRIDE);
+	udelay(1000);
+
+	ar71xx_device_start(AR934X_RESET_USB_PHY);
+	udelay(1000);
+
+	ar71xx_device_start(AR934X_RESET_USB_PHY_ANALOG);
+	udelay(1000);
+
+	ar71xx_device_start(AR934X_RESET_USB_HOST);
+	udelay(1000);
+
+	ar71xx_ehci_data.is_ar91xx = 1;
+	platform_device_register(&ar71xx_ehci_device);
+}
+
 void __init ar71xx_add_device_usb(void)
 {
 	switch (ar71xx_soc) {
 	case AR71XX_SOC_AR7240:
+		ar7240_usb_setup();
+		break;
+
 	case AR71XX_SOC_AR7241:
 	case AR71XX_SOC_AR7242:
-		ar7240_usb_setup();
+		ar7241_usb_setup();
 		break;
 
 	case AR71XX_SOC_AR7130:
@@ -173,6 +227,17 @@ void __init ar71xx_add_device_usb(void)
 	case AR71XX_SOC_AR9130:
 	case AR71XX_SOC_AR9132:
 		ar91xx_usb_setup();
+		break;
+
+	case AR71XX_SOC_AR9330:
+	case AR71XX_SOC_AR9331:
+		ar933x_usb_setup();
+		break;
+
+	case AR71XX_SOC_AR9341:
+	case AR71XX_SOC_AR9342:
+	case AR71XX_SOC_AR9344:
+		ar934x_usb_setup();
 		break;
 
 	default:

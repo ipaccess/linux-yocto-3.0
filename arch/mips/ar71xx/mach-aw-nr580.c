@@ -31,7 +31,8 @@
 #define AW_NR580_GPIO_BTN_WPS		3
 #define AW_NR580_GPIO_BTN_RESET		11
 
-#define AW_NR580_BUTTONS_POLL_INTERVAL	20
+#define AW_NR580_KEYS_POLL_INTERVAL	20	/* msecs */
+#define AW_NR580_KEYS_DEBOUNCE_INTERVAL	(3 * AW_NR580_KEYS_POLL_INTERVAL)
 
 static struct gpio_led aw_nr580_leds_gpio[] __initdata = {
 	{
@@ -57,19 +58,19 @@ static struct gpio_led aw_nr580_leds_gpio[] __initdata = {
 	}
 };
 
-static struct gpio_button aw_nr580_gpio_buttons[] __initdata = {
+static struct gpio_keys_button aw_nr580_gpio_keys[] __initdata = {
 	{
 		.desc		= "reset",
 		.type		= EV_KEY,
-		.code		= BTN_0,
-		.threshold	= 3,
+		.code		= KEY_RESTART,
+		.debounce_interval = AW_NR580_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= AW_NR580_GPIO_BTN_RESET,
 		.active_low	= 1,
 	}, {
 		.desc		= "wps",
 		.type		= EV_KEY,
-		.code		= BTN_1,
-		.threshold	= 3,
+		.code		= KEY_WPS_BUTTON,
+		.debounce_interval = AW_NR580_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= AW_NR580_GPIO_BTN_WPS,
 		.active_low	= 1,
 	}
@@ -77,7 +78,7 @@ static struct gpio_button aw_nr580_gpio_buttons[] __initdata = {
 
 static void __init aw_nr580_setup(void)
 {
-	ar71xx_add_device_mdio(0x0);
+	ar71xx_add_device_mdio(0, 0x0);
 
 	ar71xx_eth0_data.phy_if_mode = PHY_INTERFACE_MODE_MII;
 	ar71xx_eth0_data.speed = SPEED_100;
@@ -92,9 +93,9 @@ static void __init aw_nr580_setup(void)
 	ar71xx_add_device_leds_gpio(-1, ARRAY_SIZE(aw_nr580_leds_gpio),
 					aw_nr580_leds_gpio);
 
-	ar71xx_add_device_gpio_buttons(-1, AW_NR580_BUTTONS_POLL_INTERVAL,
-					ARRAY_SIZE(aw_nr580_gpio_buttons),
-					aw_nr580_gpio_buttons);
+	ar71xx_register_gpio_keys_polled(-1, AW_NR580_KEYS_POLL_INTERVAL,
+					 ARRAY_SIZE(aw_nr580_gpio_keys),
+					 aw_nr580_gpio_keys);
 }
 
 MIPS_MACHINE(AR71XX_MACH_AW_NR580, "AW-NR580", "AzureWave AW-NR580",

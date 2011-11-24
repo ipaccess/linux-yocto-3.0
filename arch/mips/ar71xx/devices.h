@@ -20,8 +20,10 @@ void ar71xx_add_device_spi(struct ar71xx_spi_platform_data *pdata,
 			   struct spi_board_info const *info,
 			   unsigned n) __init;
 
-void ar71xx_set_mac_base(unsigned char *mac) __init;
+extern unsigned char ar71xx_mac_base[] __initdata;
 void ar71xx_parse_mac_addr(char *mac_str) __init;
+void ar71xx_init_mac(unsigned char *dst, const unsigned char *src,
+		     unsigned offset) __init;
 
 struct ar71xx_eth_pll_data {
 	u32	pll_10;
@@ -38,8 +40,9 @@ extern struct platform_device ar71xx_eth0_device;
 extern struct platform_device ar71xx_eth1_device;
 void ar71xx_add_device_eth(unsigned int id) __init;
 
-extern struct platform_device ar71xx_mdio_device;
-void ar71xx_add_device_mdio(u32 phy_mask) __init;
+extern struct platform_device ar71xx_mdio0_device;
+extern struct platform_device ar71xx_mdio1_device;
+void ar71xx_add_device_mdio(unsigned int id, u32 phy_mask) __init;
 
 void ar71xx_add_device_uart(void) __init;
 

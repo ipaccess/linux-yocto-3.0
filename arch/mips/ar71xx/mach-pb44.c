@@ -54,6 +54,9 @@
 #define PB44_GPIO_LED_JUMP1	(PB44_GPIO_EXP_BASE + PB44_PCF8757_LED_JUMP1)
 #define PB44_GPIO_LED_JUMP2	(PB44_GPIO_EXP_BASE + PB44_PCF8757_LED_JUMP2)
 
+#define PB44_KEYS_POLL_INTERVAL		20	/* msecs */
+#define PB44_KEYS_DEBOUNCE_INTERVAL	(3 * PB44_KEYS_POLL_INTERVAL)
+
 static struct i2c_gpio_platform_data pb44_i2c_gpio_data = {
 	.sda_pin        = PB44_GPIO_I2C_SDA,
 	.scl_pin        = PB44_GPIO_I2C_SCL,
@@ -90,19 +93,19 @@ static struct gpio_led pb44_leds_gpio[] __initdata = {
 	},
 };
 
-static struct gpio_button pb44_gpio_buttons[] __initdata = {
+static struct gpio_keys_button pb44_gpio_keys[] __initdata = {
 	{
 		.desc		= "soft_reset",
 		.type		= EV_KEY,
-		.code		= BTN_0,
-		.threshold	= 3,
+		.code		= KEY_RESTART,
+		.debounce_interval = PB44_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= PB44_GPIO_SW_RESET,
 		.active_low	= 1,
-	} , {
+	}, {
 		.desc		= "jumpstart",
 		.type		= EV_KEY,
-		.code		= BTN_1,
-		.threshold	= 3,
+		.code		= KEY_WPS_BUTTON,
+		.debounce_interval = PB44_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= PB44_GPIO_SW_JUMP,
 		.active_low	= 1,
 	}
@@ -171,13 +174,15 @@ static struct platform_device pb44_spi_device = {
 
 static void __init pb44_init(void)
 {
-	ar71xx_add_device_mdio(~PB44_MDIO_PHYMASK);
+	ar71xx_add_device_mdio(0, ~PB44_MDIO_PHYMASK);
 
+	ar71xx_init_mac(ar71xx_eth0_data.mac_addr, ar71xx_mac_base, 0);
 	ar71xx_eth0_data.phy_if_mode = PHY_INTERFACE_MODE_RGMII;
 	ar71xx_eth0_data.phy_mask = PB44_WAN_PHYMASK;
 
 	ar71xx_add_device_eth(0);
 
+	ar71xx_init_mac(ar71xx_eth1_data.mac_addr, ar71xx_mac_base, 1);
 	ar71xx_eth1_data.phy_if_mode = PHY_INTERFACE_MODE_RGMII;
 	ar71xx_eth1_data.speed = SPEED_1000;
 	ar71xx_eth1_data.duplex = DUPLEX_FULL;
@@ -198,10 +203,11 @@ static void __init pb44_init(void)
 	platform_device_register(&pb44_spi_device);
 
 	ar71xx_add_device_leds_gpio(-1, ARRAY_SIZE(pb44_leds_gpio),
-				    pb44_leds_gpio);
+					pb44_leds_gpio);
 
-	ar71xx_add_device_gpio_buttons(-1, 20, ARRAY_SIZE(pb44_gpio_buttons),
-				       pb44_gpio_buttons);
+	ar71xx_register_gpio_keys_polled(-1, PB44_KEYS_POLL_INTERVAL,
+					 ARRAY_SIZE(pb44_gpio_keys),
+					 pb44_gpio_keys);
 }
 
 MIPS_MACHINE(AR71XX_MACH_PB44, "PB44", "Atheros PB44", pb44_init);

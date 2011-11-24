@@ -10,6 +10,7 @@
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
+#include <linux/platform_device.h>
 
 #include <asm/mach-ar71xx/ar71xx.h>
 
@@ -28,7 +29,9 @@
 #define TL_WR841ND_V1_GPIO_BTN_RESET	3
 #define TL_WR841ND_V1_GPIO_BTN_QSS	7
 
-#define TL_WR841ND_V1_BUTTONS_POLL_INTERVAL	20
+#define TL_WR841ND_V1_KEYS_POLL_INTERVAL	20	/* msecs */
+#define TL_WR841ND_V1_KEYS_DEBOUNCE_INTERVAL \
+				(3 * TL_WR841ND_V1_KEYS_POLL_INTERVAL)
 
 #ifdef CONFIG_MTD_PARTITIONS
 static struct mtd_partition tl_wr841n_v1_partitions[] = {
@@ -37,20 +40,20 @@ static struct mtd_partition tl_wr841n_v1_partitions[] = {
 		.offset		= 0,
 		.size		= 0x020000,
 		.mask_flags	= MTD_WRITEABLE,
-	} , {
+	}, {
 		.name		= "kernel",
 		.offset		= 0x020000,
 		.size		= 0x140000,
-	} , {
+	}, {
 		.name		= "rootfs",
 		.offset		= 0x160000,
 		.size		= 0x280000,
-	} , {
+	}, {
 		.name		= "config",
 		.offset		= 0x3e0000,
 		.size		= 0x020000,
 		.mask_flags	= MTD_WRITEABLE,
-	} , {
+	}, {
 		.name		= "firmware",
 		.offset		= 0x020000,
 		.size		= 0x3c0000,
@@ -60,38 +63,38 @@ static struct mtd_partition tl_wr841n_v1_partitions[] = {
 
 static struct flash_platform_data tl_wr841n_v1_flash_data = {
 #ifdef CONFIG_MTD_PARTITIONS
-        .parts          = tl_wr841n_v1_partitions,
-        .nr_parts       = ARRAY_SIZE(tl_wr841n_v1_partitions),
+	.parts		= tl_wr841n_v1_partitions,
+	.nr_parts	= ARRAY_SIZE(tl_wr841n_v1_partitions),
 #endif
 };
 
 static struct gpio_led tl_wr841n_v1_leds_gpio[] __initdata = {
 	{
-		.name		= "tl-wr841n:green:system",
+		.name		= "tp-link:green:system",
 		.gpio		= TL_WR841ND_V1_GPIO_LED_SYSTEM,
 		.active_low	= 1,
 	}, {
-		.name		= "tl-wr841n:red:qss",
+		.name		= "tp-link:red:qss",
 		.gpio		= TL_WR841ND_V1_GPIO_LED_QSS_RED,
 	}, {
-		.name		= "tl-wr841n:green:qss",
+		.name		= "tp-link:green:qss",
 		.gpio		= TL_WR841ND_V1_GPIO_LED_QSS_GREEN,
 	}
 };
 
-static struct gpio_button tl_wr841n_v1_gpio_buttons[] __initdata = {
+static struct gpio_keys_button tl_wr841n_v1_gpio_keys[] __initdata = {
 	{
 		.desc		= "reset",
 		.type		= EV_KEY,
-		.code		= BTN_0,
-		.threshold	= 3,
+		.code		= KEY_RESTART,
+		.debounce_interval = TL_WR841ND_V1_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= TL_WR841ND_V1_GPIO_BTN_RESET,
 		.active_low	= 1,
 	}, {
 		.desc		= "qss",
 		.type		= EV_KEY,
-		.code		= BTN_1,
-		.threshold	= 3,
+		.code		= KEY_WPS_BUTTON,
+		.debounce_interval = TL_WR841ND_V1_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= TL_WR841ND_V1_GPIO_BTN_QSS,
 		.active_low	= 1,
 	}
@@ -115,26 +118,25 @@ static void __init tl_wr841n_v1_setup(void)
 {
 	u8 *mac = (u8 *) KSEG1ADDR(0x1f01fc00);
 
-	ar71xx_set_mac_base(mac);
+	ar71xx_add_device_mdio(0, 0x0);
 
-	ar71xx_add_device_mdio(0x0);
-
+	ar71xx_init_mac(ar71xx_eth0_data.mac_addr, mac, 0);
 	ar71xx_eth0_data.phy_if_mode = PHY_INTERFACE_MODE_RMII;
 	ar71xx_eth0_data.speed = SPEED_100;
 	ar71xx_eth0_data.duplex = DUPLEX_FULL;
 
 	ar71xx_add_device_eth(0);
-
-	ar71xx_add_device_dsa(0, &tl_wr841n_v1_dsa_data);
+	ar71xx_add_device_dsa(&ar71xx_eth0_device.dev, &ar71xx_mdio0_device.dev,
+			      &tl_wr841n_v1_dsa_data);
 
 	ar71xx_add_device_m25p80(&tl_wr841n_v1_flash_data);
 
 	ar71xx_add_device_leds_gpio(-1, ARRAY_SIZE(tl_wr841n_v1_leds_gpio),
 					tl_wr841n_v1_leds_gpio);
 
-	ar71xx_add_device_gpio_buttons(-1, TL_WR841ND_V1_BUTTONS_POLL_INTERVAL,
-					ARRAY_SIZE(tl_wr841n_v1_gpio_buttons),
-					tl_wr841n_v1_gpio_buttons);
+	ar71xx_register_gpio_keys_polled(-1, TL_WR841ND_V1_KEYS_POLL_INTERVAL,
+					 ARRAY_SIZE(tl_wr841n_v1_gpio_keys),
+					 tl_wr841n_v1_gpio_keys);
 
 	pb42_pci_init();
 }
