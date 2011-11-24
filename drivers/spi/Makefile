@@ -58,6 +58,7 @@ obj-$(CONFIG_SPI_SH_SCI)		+= spi_sh_sci.o
 obj-$(CONFIG_SPI_SH_MSIOF)		+= spi_sh_msiof.o
 obj-$(CONFIG_SPI_STMP3XXX)		+= spi_stmp.o
 obj-$(CONFIG_SPI_NUC900)		+= spi_nuc900.o
+obj-$(CONFIG_SPI_RB4XX)			+= rb4xx_spi.o
 
 # special build for s3c24xx spi driver with fiq support
 spi_s3c24xx_hw-y			:= spi_s3c24xx.o
@@ -66,8 +67,8 @@ spi_s3c24xx_hw-$(CONFIG_SPI_S3C24XX_FIQ) += spi_s3c24xx_fiq.o
 # 	... add above this line ...
 
 # SPI protocol drivers (device/link on bus)
+obj-$(CONFIG_SPI_RB4XX_CPLD)	+= spi_rb4xx_cpld.o
 obj-$(CONFIG_SPI_SPIDEV)	+= spidev.o
-obj-$(CONFIG_SPI_VSC7385)	+= spi_vsc7385.o
 obj-$(CONFIG_SPI_TLE62X0)	+= tle62x0.o
 # 	... add above this line ...
 
