@@ -107,7 +107,7 @@ int ar71xx_pci_be_handler(int is_fixup)
 		__raw_writel(ahb_err, base + PCI_REG_AHB_ERR);
 	}
 
-	return ((ahb_err | pci_err) ? 1 : 0);
+	return (ahb_err | pci_err) ? 1 : 0;
 }
 
 static inline int ar71xx_pci_set_cfgaddr(struct pci_bus *bus,
@@ -136,6 +136,7 @@ static int ar71xx_pci_read_config(struct pci_bus *bus, unsigned int devfn,
 	static u32 mask[8] = {0, 0xff, 0xffff, 0, 0xffffffff, 0, 0, 0};
 	unsigned long flags;
 	u32 data;
+	int retry = 0;
 	int ret;
 
 	ret = PCIBIOS_SUCCESSFUL;
@@ -143,6 +144,7 @@ static int ar71xx_pci_read_config(struct pci_bus *bus, unsigned int devfn,
 	DBG("PCI: read config: %02x:%02x.%01x/%02x:%01d\n", bus->number,
 			PCI_SLOT(devfn), PCI_FUNC(devfn), where, size);
 
+retry:
 	spin_lock_irqsave(&ar71xx_pci_lock, flags);
 
 	if (bus->number == 0 && devfn == 0) {
@@ -175,6 +177,14 @@ static int ar71xx_pci_read_config(struct pci_bus *bus, unsigned int devfn,
 		(data >> (8 * (where & 3))) & mask[size & 7], data);
 
 	*value = (data >> (8 * (where & 3))) & mask[size & 7];
+
+	/*
+	 * PCI controller bug: sometimes reads to the PCI_COMMAND register
+	 * return 0xffff, even though the PCI trace shows the correct value.
+	 * Work around this by retrying reads to this register
+	 */
+	if (where == PCI_COMMAND && (*value & 0xffff) == 0xffff && retry++ < 2)
+		goto retry;
 
 	return ret;
 }
@@ -319,12 +329,11 @@ static void ar71xx_pci_irq_handler(unsigned int irq, struct irq_desc *desc)
 		spurious_interrupt();
 }
 
-static void ar71xx_pci_irq_unmask(unsigned int irq)
+static void ar71xx_pci_irq_unmask(struct irq_data *d)
 {
+	unsigned int irq = d->irq - AR71XX_PCI_IRQ_BASE;
 	void __iomem *base = ar71xx_reset_base;
 	u32 t;
-
-	irq -= AR71XX_PCI_IRQ_BASE;
 
 	t = __raw_readl(base + AR71XX_RESET_REG_PCI_INT_ENABLE);
 	__raw_writel(t | (1 << irq), base + AR71XX_RESET_REG_PCI_INT_ENABLE);
@@ -333,12 +342,11 @@ static void ar71xx_pci_irq_unmask(unsigned int irq)
 	(void) __raw_readl(base + AR71XX_RESET_REG_PCI_INT_ENABLE);
 }
 
-static void ar71xx_pci_irq_mask(unsigned int irq)
+static void ar71xx_pci_irq_mask(struct irq_data *d)
 {
+	unsigned int irq = d->irq - AR71XX_PCI_IRQ_BASE;
 	void __iomem *base = ar71xx_reset_base;
 	u32 t;
-
-	irq -= AR71XX_PCI_IRQ_BASE;
 
 	t = __raw_readl(base + AR71XX_RESET_REG_PCI_INT_ENABLE);
 	__raw_writel(t & ~(1 << irq), base + AR71XX_RESET_REG_PCI_INT_ENABLE);
@@ -349,9 +357,9 @@ static void ar71xx_pci_irq_mask(unsigned int irq)
 
 static struct irq_chip ar71xx_pci_irq_chip = {
 	.name		= "AR71XX PCI ",
-	.mask		= ar71xx_pci_irq_mask,
-	.unmask		= ar71xx_pci_irq_unmask,
-	.mask_ack	= ar71xx_pci_irq_mask,
+	.irq_mask	= ar71xx_pci_irq_mask,
+	.irq_unmask	= ar71xx_pci_irq_unmask,
+	.irq_mask_ack	= ar71xx_pci_irq_mask,
 };
 
 static void __init ar71xx_pci_irq_init(void)
@@ -363,13 +371,11 @@ static void __init ar71xx_pci_irq_init(void)
 	__raw_writel(0, base + AR71XX_RESET_REG_PCI_INT_STATUS);
 
 	for (i = AR71XX_PCI_IRQ_BASE;
-	     i < AR71XX_PCI_IRQ_BASE + AR71XX_PCI_IRQ_COUNT; i++) {
-		irq_desc[i].status = IRQ_DISABLED;
-		set_irq_chip_and_handler(i, &ar71xx_pci_irq_chip,
+	     i < AR71XX_PCI_IRQ_BASE + AR71XX_PCI_IRQ_COUNT; i++)
+		irq_set_chip_and_handler(i, &ar71xx_pci_irq_chip,
 					 handle_level_irq);
-	}
 
-	set_irq_chained_handler(AR71XX_CPU_IRQ_IP2, ar71xx_pci_irq_handler);
+	irq_set_chained_handler(AR71XX_CPU_IRQ_IP2, ar71xx_pci_irq_handler);
 }
 
 int __init ar71xx_pcibios_init(void)

@@ -111,10 +111,9 @@ static int ar724x_pci_read_config(struct pci_bus *bus, unsigned int devfn,
 	 * if we set the BAR with proper base address
 	 */
 	if ((where == 0x10) && (size == 4)) {
-		if (ar71xx_soc == AR71XX_SOC_AR7240)
-			ar724x_pci_write(ar724x_pci_devcfg_base, where, size, 0xffff);
-		else
-			ar724x_pci_write(ar724x_pci_devcfg_base, where, size, 0x1000ffff);
+		u32 val;
+		val = (ar71xx_soc == AR71XX_SOC_AR7240) ? 0xffff : 0x1000ffff;
+		ar724x_pci_write(ar724x_pci_devcfg_base, where, size, val);
 	}
 
 	return PCIBIOS_SUCCESSFUL;
@@ -256,7 +255,8 @@ static int __init ar724x_pci_setup(void)
 		return -ENODEV;
 	}
 
-	if (ar71xx_soc == AR71XX_SOC_AR7241 || ar71xx_soc == AR71XX_SOC_AR7242) {
+	if (ar71xx_soc == AR71XX_SOC_AR7241 ||
+	    ar71xx_soc == AR71XX_SOC_AR7242) {
 		t = __raw_readl(base + AR724X_PCI_REG_APP);
 		t |= BIT(16);
 		__raw_writel(t, base + AR724X_PCI_REG_APP);
@@ -280,15 +280,13 @@ static void ar724x_pci_irq_handler(unsigned int irq, struct irq_desc *desc)
 		spurious_interrupt();
 }
 
-static void ar724x_pci_irq_unmask(unsigned int irq)
+static void ar724x_pci_irq_unmask(struct irq_data *d)
 {
 	void __iomem *base = ar724x_pci_ctrl_base;
 	u32 t;
 
-	switch (irq) {
+	switch (d->irq) {
 	case AR71XX_PCI_IRQ_DEV0:
-		irq -= AR71XX_PCI_IRQ_BASE;
-
 		t = __raw_readl(base + AR724X_PCI_REG_INT_MASK);
 		__raw_writel(t | AR724X_PCI_INT_DEV0,
 			     base + AR724X_PCI_REG_INT_MASK);
@@ -297,15 +295,13 @@ static void ar724x_pci_irq_unmask(unsigned int irq)
 	}
 }
 
-static void ar724x_pci_irq_mask(unsigned int irq)
+static void ar724x_pci_irq_mask(struct irq_data *d)
 {
 	void __iomem *base = ar724x_pci_ctrl_base;
 	u32 t;
 
-	switch (irq) {
+	switch (d->irq) {
 	case AR71XX_PCI_IRQ_DEV0:
-		irq -= AR71XX_PCI_IRQ_BASE;
-
 		t = __raw_readl(base + AR724X_PCI_REG_INT_MASK);
 		__raw_writel(t & ~AR724X_PCI_INT_DEV0,
 			     base + AR724X_PCI_REG_INT_MASK);
@@ -324,12 +320,12 @@ static void ar724x_pci_irq_mask(unsigned int irq)
 
 static struct irq_chip ar724x_pci_irq_chip = {
 	.name		= "AR724X PCI ",
-	.mask		= ar724x_pci_irq_mask,
-	.unmask		= ar724x_pci_irq_unmask,
-	.mask_ack	= ar724x_pci_irq_mask,
+	.irq_mask	= ar724x_pci_irq_mask,
+	.irq_unmask	= ar724x_pci_irq_unmask,
+	.irq_mask_ack	= ar724x_pci_irq_mask,
 };
 
-static void __init ar724x_pci_irq_init(void)
+static void __init ar724x_pci_irq_init(int irq)
 {
 	void __iomem *base = ar724x_pci_ctrl_base;
 	u32 t;
@@ -345,16 +341,14 @@ static void __init ar724x_pci_irq_init(void)
 	__raw_writel(0, base + AR724X_PCI_REG_INT_STATUS);
 
 	for (i = AR71XX_PCI_IRQ_BASE;
-	     i < AR71XX_PCI_IRQ_BASE + AR71XX_PCI_IRQ_COUNT; i++) {
-		irq_desc[i].status = IRQ_DISABLED;
-		set_irq_chip_and_handler(i, &ar724x_pci_irq_chip,
+	     i < AR71XX_PCI_IRQ_BASE + AR71XX_PCI_IRQ_COUNT; i++)
+		irq_set_chip_and_handler(i, &ar724x_pci_irq_chip,
 					 handle_level_irq);
-	}
 
-	set_irq_chained_handler(AR71XX_CPU_IRQ_IP2, ar724x_pci_irq_handler);
+	irq_set_chained_handler(irq, ar724x_pci_irq_handler);
 }
 
-int __init ar724x_pcibios_init(void)
+int __init ar724x_pcibios_init(int irq)
 {
 	int ret = -ENOMEM;
 
@@ -379,17 +373,17 @@ int __init ar724x_pcibios_init(void)
 		goto err_unmap_ctrl;
 
 	ar724x_pci_fixup_enable = 1;
-	ar724x_pci_irq_init();
+	ar724x_pci_irq_init(irq);
 	register_pci_controller(&ar724x_pci_controller);
 
 	return 0;
 
- err_unmap_ctrl:
+err_unmap_ctrl:
 	iounmap(ar724x_pci_ctrl_base);
-  err_unmap_devcfg:
+err_unmap_devcfg:
 	iounmap(ar724x_pci_devcfg_base);
- err_unmap_localcfg:
+err_unmap_localcfg:
 	iounmap(ar724x_pci_localcfg_base);
- err:
+err:
 	return ret;
 }
