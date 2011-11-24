@@ -16,7 +16,6 @@
 #include "machtype.h"
 #include "devices.h"
 #include "dev-m25p80.h"
-#include "dev-ap91-eth.h"
 #include "dev-ap91-pci.h"
 #include "dev-gpio-buttons.h"
 #include "dev-leds-gpio.h"
@@ -29,7 +28,8 @@
 #define DIR_600_A1_GPIO_BTN_RESET		8
 #define DIR_600_A1_GPIO_BTN_WPS			12
 
-#define DIR_600_A1_BUTTONS_POLL_INTERVAL	20
+#define DIR_600_A1_KEYS_POLL_INTERVAL	20	/* msecs */
+#define DIR_600_A1_KEYS_DEBOUNCE_INTERVAL (3 * DIR_600_A1_KEYS_POLL_INTERVAL)
 
 #define DIR_600_A1_NVRAM_ADDR	0x1f030000
 #define DIR_600_A1_NVRAM_SIZE	0x10000
@@ -73,8 +73,8 @@ static struct mtd_partition dir_600_a1_partitions[] = {
 
 static struct flash_platform_data dir_600_a1_flash_data = {
 #ifdef CONFIG_MTD_PARTITIONS
-        .parts          = dir_600_a1_partitions,
-        .nr_parts       = ARRAY_SIZE(dir_600_a1_partitions),
+	.parts		= dir_600_a1_partitions,
+	.nr_parts	= ARRAY_SIZE(dir_600_a1_partitions),
 #endif
 };
 
@@ -92,19 +92,19 @@ static struct gpio_led dir_600_a1_leds_gpio[] __initdata = {
 	}
 };
 
-static struct gpio_button dir_600_a1_gpio_buttons[] __initdata = {
+static struct gpio_keys_button dir_600_a1_gpio_keys[] __initdata = {
 	{
 		.desc		= "reset",
 		.type		= EV_KEY,
-		.code		= BTN_0,
-		.threshold	= 3,
+		.code		= KEY_RESTART,
+		.debounce_interval = DIR_600_A1_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= DIR_600_A1_GPIO_BTN_RESET,
 		.active_low	= 1,
 	}, {
 		.desc		= "wps",
 		.type		= EV_KEY,
-		.code		= BTN_1,
-		.threshold	= 3,
+		.code		= KEY_WPS_BUTTON,
+		.debounce_interval = DIR_600_A1_KEYS_DEBOUNCE_INTERVAL,
 		.gpio		= DIR_600_A1_GPIO_BTN_WPS,
 		.active_low	= 1,
 	}
@@ -118,19 +118,32 @@ static void __init dir_600_a1_setup(void)
 	u8 *mac = NULL;
 
 	if (nvram_parse_mac_addr(nvram, DIR_600_A1_NVRAM_SIZE,
-			         "lan_mac=", mac_buff) == 0)
+				"lan_mac=", mac_buff) == 0) {
+		ar71xx_init_mac(ar71xx_eth0_data.mac_addr, mac_buff, 0);
+		ar71xx_init_mac(ar71xx_eth1_data.mac_addr, mac_buff, 1);
 		mac = mac_buff;
+	}
 
 	ar71xx_add_device_m25p80(&dir_600_a1_flash_data);
 
 	ar71xx_add_device_leds_gpio(-1, ARRAY_SIZE(dir_600_a1_leds_gpio),
 					dir_600_a1_leds_gpio);
 
-	ar71xx_add_device_gpio_buttons(-1, DIR_600_A1_BUTTONS_POLL_INTERVAL,
-					ARRAY_SIZE(dir_600_a1_gpio_buttons),
-					dir_600_a1_gpio_buttons);
+	ar71xx_register_gpio_keys_polled(-1, DIR_600_A1_KEYS_POLL_INTERVAL,
+					 ARRAY_SIZE(dir_600_a1_gpio_keys),
+					 dir_600_a1_gpio_keys);
 
-	ap91_eth_init(mac, NULL);
+	ar71xx_init_mac(ar71xx_eth0_data.mac_addr, mac, 0);
+	ar71xx_init_mac(ar71xx_eth1_data.mac_addr, mac, 1);
+
+	ar71xx_add_device_mdio(0, 0x0);
+
+	/* LAN ports */
+	ar71xx_add_device_eth(1);
+
+	/* WAN port */
+	ar71xx_add_device_eth(0);
+
 	ap91_pci_init(ee, mac);
 }
 
