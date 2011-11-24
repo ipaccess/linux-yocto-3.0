@@ -206,6 +206,10 @@
 /* Xilinx PSS UART */
 #define PORT_XUARTPS	98
 
+/* Atheros AR933X SoC */
+#define PORT_AR933X	99
+
+
 #ifdef __KERNEL__
 
 #include <linux/compiler.h>
