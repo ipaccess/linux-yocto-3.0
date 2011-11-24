@@ -333,6 +333,12 @@ config SPI_PXA2XX
 config SPI_PXA2XX_PCI
 	def_bool SPI_PXA2XX && X86_32 && PCI
 
+config SPI_RB4XX
+	tristate "Mikrotik RB4XX SPI master"
+	depends on SPI_MASTER && AR71XX_MACH_RB4XX
+	help
+	  SPI controller driver for the Mikrotik RB4xx series boards.
+
 config SPI_S3C24XX
 	tristate "Samsung S3C24XX series SPI"
 	depends on ARCH_S3C2410 && EXPERIMENTAL
@@ -489,10 +495,12 @@ config SPI_TLE62X0
 	  sysfs interface, with each line presented as a kind of GPIO
 	  exposing both switch control and diagnostic feedback.
 
-config SPI_VSC7385
-	tristate "Vitesse VSC7385 ethernet switch driver"
+config SPI_RB4XX_CPLD
+	tristate "MikroTik RB4XX CPLD driver"
+	depends on AR71XX_MACH_RB4XX
 	help
-	  SPI driver for the Vitesse VSC7385 ethernet switch.
+	  SPI driver for the Xilinx CPLD chip present on the
+	  MikroTik RB4xx boards.
 
 #
 # Add new SPI protocol masters in alphabetical order above this line
