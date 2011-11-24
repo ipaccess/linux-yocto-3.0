@@ -148,7 +148,7 @@ static inline bool dev_xmit_complete(int rc)
  */
 
 #if defined(CONFIG_WLAN) || defined(CONFIG_AX25) || defined(CONFIG_AX25_MODULE)
-# if defined(CONFIG_MAC80211_MESH)
+# if 1 || defined(CONFIG_MAC80211_MESH)
 #  define LL_MAX_HEADER 128
 # else
 #  define LL_MAX_HEADER 96
@@ -1188,6 +1188,7 @@ struct net_device {
 	void			*ax25_ptr;	/* AX.25 specific data */
 	struct wireless_dev	*ieee80211_ptr;	/* IEEE 802.11 specific data,
 						   assign before registering */
+	void			*phy_ptr; /* PHY device specific data */
 
 /*
  * Cache lines mostly used on receive path (including eth_type_trans())
