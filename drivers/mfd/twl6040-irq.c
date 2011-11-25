@@ -57,16 +57,16 @@ static inline struct twl6040_irq_data *irq_to_twl6040_irq(struct twl6040 *twl604
 	return &twl6040_irqs[irq - twl6040->irq_base];
 }
 
-static void twl6040_irq_lock(unsigned int irq)
+static void twl6040_irq_lock(struct irq_data *data)
 {
-	struct twl6040 *twl6040 = irq_get_chip_data(irq);
+	struct twl6040 *twl6040 = irq_data_get_irq_chip_data(data);
 
 	mutex_lock(&twl6040->irq_mutex);
 }
 
-static void twl6040_irq_sync_unlock(unsigned int irq)
+static void twl6040_irq_sync_unlock(struct irq_data *data)
 {
-	struct twl6040 *twl6040 = irq_get_chip_data(irq);
+	struct twl6040 *twl6040 = irq_data_get_irq_chip_data(data);
 
 	/* write back to hardware any change in irq mask */
 	if (twl6040->irq_masks_cur != twl6040->irq_masks_cache) {
@@ -78,28 +78,28 @@ static void twl6040_irq_sync_unlock(unsigned int irq)
 	mutex_unlock(&twl6040->irq_mutex);
 }
 
-static void twl6040_irq_unmask(unsigned int irq)
+static void twl6040_irq_unmask(struct irq_data *data)
 {
-	struct twl6040 *twl6040 = irq_get_chip_data(irq);
-	struct twl6040_irq_data *irq_data = irq_to_twl6040_irq(twl6040, irq);
+	struct twl6040 *twl6040 = irq_data_get_irq_chip_data(data);
+	struct twl6040_irq_data *irq_data = irq_to_twl6040_irq(twl6040, data->irq);
 
 	twl6040->irq_masks_cur &= ~irq_data->mask;
 }
 
-static void twl6040_irq_mask(unsigned int irq)
+static void twl6040_irq_mask(struct irq_data *data)
 {
-	struct twl6040 *twl6040 = irq_get_chip_data(irq);
-	struct twl6040_irq_data *irq_data = irq_to_twl6040_irq(twl6040, irq);
+	struct twl6040 *twl6040 = irq_data_get_irq_chip_data(data);
+	struct twl6040_irq_data *irq_data = irq_to_twl6040_irq(twl6040, data->irq);
 
 	twl6040->irq_masks_cur |= irq_data->mask;
 }
 
 static struct irq_chip twl6040_irq_chip = {
 	.name = "twl6040",
-	.bus_lock = twl6040_irq_lock,
-	.bus_sync_unlock = twl6040_irq_sync_unlock,
-	.mask = twl6040_irq_mask,
-	.unmask = twl6040_irq_unmask,
+	.irq_bus_lock = twl6040_irq_lock,
+	.irq_bus_sync_unlock = twl6040_irq_sync_unlock,
+	.irq_mask = twl6040_irq_mask,
+	.irq_unmask = twl6040_irq_unmask,
 };
 
 static irqreturn_t twl6040_irq_thread(int irq, void *data)
@@ -168,7 +168,7 @@ int twl6040_irq_init(struct twl6040 *twl6040)
 	}
 
 	ret = request_threaded_irq(twl6040->irq, NULL, twl6040_irq_thread,
-				   IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+				   IRQF_ONESHOT,
 				   "twl6040", twl6040);
 	if (ret) {
 		dev_err(twl6040->dev, "failed to request IRQ %d: %d\n",
