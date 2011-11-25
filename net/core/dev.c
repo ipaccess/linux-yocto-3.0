@@ -213,14 +213,14 @@ static inline struct hlist_head *dev_index_hash(struct net *net, int ifindex)
 static inline void rps_lock(struct softnet_data *sd)
 {
 #ifdef CONFIG_RPS
-	raw_spin_lock(&sd->input_pkt_queue.raw_lock);
+	spin_lock(&sd->input_pkt_queue.lock);
 #endif
 }
 
 static inline void rps_unlock(struct softnet_data *sd)
 {
 #ifdef CONFIG_RPS
-	raw_spin_unlock(&sd->input_pkt_queue.raw_lock);
+	spin_unlock(&sd->input_pkt_queue.lock);
 #endif
 }
 
@@ -2902,13 +2902,11 @@ int netif_rx_ni(struct sk_buff *skb)
 {
 	int err;
 
-	preempt_disable_nort();
-	migrate_disable_rt();
+	preempt_disable();
 	err = netif_rx(skb);
 	if (local_softirq_pending())
-		thread_do_softirq();
-	migrate_enable_rt();
-	preempt_enable_nort();
+		do_softirq();
+	preempt_enable();
 
 	return err;
 }
@@ -3278,7 +3276,7 @@ static void flush_backlog(void *arg)
 	skb_queue_walk_safe(&sd->input_pkt_queue, skb, tmp) {
 		if (skb->dev == dev) {
 			__skb_unlink(skb, &sd->input_pkt_queue);
-			__skb_queue_tail(&sd->tofree_queue, skb);
+			kfree_skb(skb);
 			input_queue_head_incr(sd);
 		}
 	}
@@ -3287,13 +3285,10 @@ static void flush_backlog(void *arg)
 	skb_queue_walk_safe(&sd->process_queue, skb, tmp) {
 		if (skb->dev == dev) {
 			__skb_unlink(skb, &sd->process_queue);
-			__skb_queue_tail(&sd->tofree_queue, skb);
+			kfree_skb(skb);
 			input_queue_head_incr(sd);
 		}
 	}
-
-	if (!skb_queue_empty(&sd->tofree_queue))
-		raise_softirq_irqoff(NET_RX_SOFTIRQ);
 }
 
 static int napi_gro_complete(struct sk_buff *skb)
@@ -3771,16 +3766,9 @@ static void net_rx_action(struct softirq_action *h)
 	struct softnet_data *sd = &__get_cpu_var(softnet_data);
 	unsigned long time_limit = jiffies + 2;
 	int budget = netdev_budget;
-	struct sk_buff *skb;
 	void *have;
 
 	local_irq_disable();
-
-	while ((skb = __skb_dequeue(&sd->tofree_queue))) {
-		local_irq_enable();
-		kfree_skb(skb);
-		local_irq_disable();
-	}
 
 	while (!list_empty(&sd->poll_list)) {
 		struct napi_struct *n;
@@ -6117,6 +6105,7 @@ int dev_change_net_namespace(struct net_device *dev, struct net *net, const char
 	*/
 	call_netdevice_notifiers(NETDEV_UNREGISTER, dev);
 	call_netdevice_notifiers(NETDEV_UNREGISTER_BATCH, dev);
+	rtmsg_ifinfo(RTM_DELLINK, dev, ~0U);
 
 	/*
 	 *	Flush the unicast and multicast chains
@@ -6207,9 +6196,6 @@ static int dev_cpu_callback(struct notifier_block *nfb,
 	while ((skb = __skb_dequeue(&oldsd->input_pkt_queue))) {
 		netif_rx(skb);
 		input_queue_head_incr(oldsd);
-	}
-	while ((skb = __skb_dequeue(&oldsd->tofree_queue))) {
-		kfree_skb(skb);
 	}
 
 	return NOTIFY_OK;
@@ -6476,9 +6462,8 @@ static int __init net_dev_init(void)
 		struct softnet_data *sd = &per_cpu(softnet_data, i);
 
 		memset(sd, 0, sizeof(*sd));
-		skb_queue_head_init_raw(&sd->input_pkt_queue);
-		skb_queue_head_init_raw(&sd->process_queue);
-		skb_queue_head_init_raw(&sd->tofree_queue);
+		skb_queue_head_init(&sd->input_pkt_queue);
+		skb_queue_head_init(&sd->process_queue);
 		sd->completion_queue = NULL;
 		INIT_LIST_HEAD(&sd->poll_list);
 		sd->output_queue = NULL;

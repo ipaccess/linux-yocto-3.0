@@ -12,7 +12,6 @@
 #include <linux/completion.h>
 #include <linux/cpumask.h>
 #include <linux/page-debug-flags.h>
-#include <linux/rcupdate.h>
 #include <asm/page.h>
 #include <asm/mmu.h>
 
@@ -37,10 +36,24 @@ struct page {
 					 * updated asynchronously */
 	atomic_t _count;		/* Usage count, see below. */
 	union {
-		atomic_t _mapcount;	/* Count of ptes mapped in mms,
-					 * to show when page is mapped
-					 * & limit reverse map searches.
-					 */
+		/*
+		 * Count of ptes mapped in
+		 * mms, to show when page is
+		 * mapped & limit reverse map
+		 * searches.
+		 *
+		 * Used also for tail pages
+		 * refcounting instead of
+		 * _count. Tail pages cannot
+		 * be mapped and keeping the
+		 * tail page _count zero at
+		 * all times guarantees
+		 * get_page_unless_zero() will
+		 * never succeed on tail
+		 * pages.
+		 */
+		atomic_t _mapcount;
+
 		struct {		/* SLUB */
 			u16 inuse;
 			u16 objects;
@@ -64,11 +77,7 @@ struct page {
 						 */
 	    };
 #if USE_SPLIT_PTLOCKS
-#ifndef CONFIG_PREEMPT_RT_FULL
 	    spinlock_t ptl;
-#else
-	    spinlock_t *ptl;
-#endif
 #endif
 	    struct kmem_cache *slab;	/* SLUB: Pointer to slab */
 	    struct page *first_page;	/* Compound tail pages */
@@ -320,9 +329,6 @@ struct mm_struct {
 #endif
 #ifdef CONFIG_CPUMASK_OFFSTACK
 	struct cpumask cpumask_allocation;
-#endif
-#ifdef CONFIG_PREEMPT_RT_BASE
-	struct rcu_head delayed_drop;
 #endif
 };
 

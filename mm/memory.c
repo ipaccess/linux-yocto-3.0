@@ -1290,13 +1290,10 @@ static unsigned long unmap_page_range(struct mmu_gather *tlb,
 	return addr;
 }
 
-#if defined(CONFIG_PREEMPT) && !defined(CONFIG_PREEMPT_RT_FULL)
+#ifdef CONFIG_PREEMPT
 # define ZAP_BLOCK_SIZE	(8 * PAGE_SIZE)
 #else
-/*
- * No preempt: go for improved straight-line efficiency
- * on PREEMPT_RT this is not a critical latency-path.
- */
+/* No preempt: go for improved straight-line efficiency */
 # define ZAP_BLOCK_SIZE	(1024 * PAGE_SIZE)
 #endif
 
@@ -1517,7 +1514,7 @@ split_fallthrough:
 	}
 
 	if (flags & FOLL_GET)
-		get_page(page);
+		get_page_foll(page);
 	if (flags & FOLL_TOUCH) {
 		if ((flags & FOLL_WRITE) &&
 		    !pte_dirty(pte) && !PageDirty(page))
@@ -3438,32 +3435,6 @@ unlock:
 	return 0;
 }
 
-#ifdef CONFIG_PREEMPT_RT_FULL
-void pagefault_disable(void)
-{
-	migrate_disable();
-	current->pagefault_disabled++;
-	/*
-	 * make sure to have issued the store before a pagefault
-	 * can hit.
-	 */
-	barrier();
-}
-EXPORT_SYMBOL_GPL(pagefault_disable);
-
-void pagefault_enable(void)
-{
-	/*
-	 * make sure to issue those last loads/stores before enabling
-	 * the pagefault handler again.
-	 */
-	barrier();
-	current->pagefault_disabled--;
-	migrate_enable();
-}
-EXPORT_SYMBOL_GPL(pagefault_enable);
-#endif
-
 /*
  * By the time we get here, we already hold the mm semaphore
  */
@@ -4012,35 +3983,3 @@ void copy_user_huge_page(struct page *dst, struct page *src,
 	}
 }
 #endif /* CONFIG_TRANSPARENT_HUGEPAGE || CONFIG_HUGETLBFS */
-
-#if defined(CONFIG_PREEMPT_RT_FULL) && (USE_SPLIT_PTLOCKS > 0)
-/*
- * Heinous hack, relies on the caller doing something like:
- *
- *   pte = alloc_pages(PGALLOC_GFP, 0);
- *   if (pte)
- *     pgtable_page_ctor(pte);
- *   return pte;
- *
- * This ensures we release the page and return NULL when the
- * lock allocation fails.
- */
-struct page *pte_lock_init(struct page *page)
-{
-	page->ptl = kmalloc(sizeof(spinlock_t), GFP_KERNEL);
-	if (page->ptl) {
-		spin_lock_init(__pte_lockptr(page));
-	} else {
-		__free_page(page);
-		page = NULL;
-	}
-	return page;
-}
-
-void pte_lock_deinit(struct page *page)
-{
-	kfree(page->ptl);
-	page->mapping = NULL;
-}
-
-#endif

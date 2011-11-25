@@ -209,7 +209,9 @@ void cpu_idle(void)
 		}
 		leds_event(led_idle_end);
 		tick_nohz_restart_sched_tick();
-		schedule_preempt_disabled();
+		preempt_enable_no_resched();
+		schedule();
+		preempt_disable();
 	}
 }
 

@@ -1267,7 +1267,7 @@ static void intel_pmu_cpu_starting(int cpu)
 		struct intel_percore *pc = per_cpu(cpu_hw_events, i).per_core;
 
 		if (pc && pc->core_id == core_id) {
-			cpuc->kfree_on_online = cpuc->per_core;
+			kfree(cpuc->per_core);
 			cpuc->per_core = pc;
 			break;
 		}
@@ -1495,6 +1495,7 @@ static __init int intel_pmu_init(void)
 		break;
 
 	case 42: /* SandyBridge */
+	case 45: /* SandyBridge, "Romely-EP" */
 		memcpy(hw_cache_event_ids, snb_hw_cache_event_ids,
 		       sizeof(hw_cache_event_ids));
 

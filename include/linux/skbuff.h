@@ -118,7 +118,6 @@ struct sk_buff_head {
 
 	__u32		qlen;
 	spinlock_t	lock;
-	raw_spinlock_t	raw_lock;
 };
 
 struct sk_buff;
@@ -873,12 +872,6 @@ static inline void __skb_queue_head_init(struct sk_buff_head *list)
 static inline void skb_queue_head_init(struct sk_buff_head *list)
 {
 	spin_lock_init(&list->lock);
-	__skb_queue_head_init(list);
-}
-
-static inline void skb_queue_head_init_raw(struct sk_buff_head *list)
-{
-	raw_spin_lock_init(&list->raw_lock);
 	__skb_queue_head_init(list);
 }
 
@@ -2003,8 +1996,13 @@ static inline bool skb_defer_rx_timestamp(struct sk_buff *skb)
 /**
  * skb_complete_tx_timestamp() - deliver cloned skb with tx timestamps
  *
+ * PHY drivers may accept clones of transmitted packets for
+ * timestamping via their phy_driver.txtstamp method. These drivers
+ * must call this function to return the skb back to the stack, with
+ * or without a timestamp.
+ *
  * @skb: clone of the the original outgoing packet
- * @hwtstamps: hardware time stamps
+ * @hwtstamps: hardware time stamps, may be NULL if not available
  *
  */
 void skb_complete_tx_timestamp(struct sk_buff *skb,

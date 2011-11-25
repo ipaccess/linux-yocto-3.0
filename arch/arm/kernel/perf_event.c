@@ -420,7 +420,7 @@ armpmu_reserve_hardware(void)
 			continue;
 
 		err = request_irq(irq, handle_irq,
-				  IRQF_DISABLED | IRQF_NOBALANCING | IRQF_NO_THREAD,
+				  IRQF_DISABLED | IRQF_NOBALANCING,
 				  "armpmu", NULL);
 		if (err) {
 			pr_warning("unable to request IRQ%d for ARM perf "

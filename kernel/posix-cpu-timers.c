@@ -250,7 +250,7 @@ void thread_group_cputime(struct task_struct *tsk, struct task_cputime *times)
 	do {
 		times->utime = cputime_add(times->utime, t->utime);
 		times->stime = cputime_add(times->stime, t->stime);
-		times->sum_exec_runtime += t->se.sum_exec_runtime;
+		times->sum_exec_runtime += task_sched_runtime(t);
 	} while_each_thread(tsk, t);
 out:
 	rcu_read_unlock();
@@ -274,9 +274,7 @@ void thread_group_cputimer(struct task_struct *tsk, struct task_cputime *times)
 	struct task_cputime sum;
 	unsigned long flags;
 
-	raw_spin_lock_irqsave(&cputimer->lock, flags);
 	if (!cputimer->running) {
-		cputimer->running = 1;
 		/*
 		 * The POSIX timer interface allows for absolute time expiry
 		 * values through the TIMER_ABSTIME flag, therefore we have
@@ -284,10 +282,13 @@ void thread_group_cputimer(struct task_struct *tsk, struct task_cputime *times)
 		 * it.
 		 */
 		thread_group_cputime(tsk, &sum);
+		spin_lock_irqsave(&cputimer->lock, flags);
+		cputimer->running = 1;
 		update_gt_cputime(&cputimer->cputime, &sum);
-	}
+	} else
+		spin_lock_irqsave(&cputimer->lock, flags);
 	*times = cputimer->cputime;
-	raw_spin_unlock_irqrestore(&cputimer->lock, flags);
+	spin_unlock_irqrestore(&cputimer->lock, flags);
 }
 
 /*
@@ -312,7 +313,8 @@ static int cpu_clock_sample_group(const clockid_t which_clock,
 		cpu->cpu = cputime.utime;
 		break;
 	case CPUCLOCK_SCHED:
-		cpu->sched = thread_group_sched_runtime(p);
+		thread_group_cputime(p, &cputime);
+		cpu->sched = cputime.sum_exec_runtime;
 		break;
 	}
 	return 0;
@@ -699,7 +701,7 @@ static int posix_cpu_timer_set(struct k_itimer *timer, int flags,
 	/*
 	 * Disarm any old timer after extracting its expiry time.
 	 */
-	BUG_ON_NONRT(!irqs_disabled());
+	BUG_ON(!irqs_disabled());
 
 	ret = 0;
 	old_incr = timer->it.cpu.incr;
@@ -997,9 +999,9 @@ static void stop_process_timers(struct signal_struct *sig)
 	struct thread_group_cputimer *cputimer = &sig->cputimer;
 	unsigned long flags;
 
-	raw_spin_lock_irqsave(&cputimer->lock, flags);
+	spin_lock_irqsave(&cputimer->lock, flags);
 	cputimer->running = 0;
-	raw_spin_unlock_irqrestore(&cputimer->lock, flags);
+	spin_unlock_irqrestore(&cputimer->lock, flags);
 }
 
 static u32 onecputick;
@@ -1221,7 +1223,7 @@ void posix_cpu_timer_schedule(struct k_itimer *timer)
 	/*
 	 * Now re-arm for the new expiry time.
 	 */
-	BUG_ON_NONRT(!irqs_disabled());
+	BUG_ON(!irqs_disabled());
 	arm_timer(timer);
 	spin_unlock(&p->sighand->siglock);
 
@@ -1288,11 +1290,10 @@ static inline int fastpath_timer_check(struct task_struct *tsk)
 	sig = tsk->signal;
 	if (sig->cputimer.running) {
 		struct task_cputime group_sample;
-		unsigned long flags;
 
-		raw_spin_lock_irqsave(&sig->cputimer.lock, flags);
+		spin_lock(&sig->cputimer.lock);
 		group_sample = sig->cputimer.cputime;
-		raw_spin_unlock_irqrestore(&sig->cputimer.lock, flags);
+		spin_unlock(&sig->cputimer.lock);
 
 		if (task_cputime_expired(&group_sample, &sig->cputime_expires))
 			return 1;
@@ -1306,13 +1307,13 @@ static inline int fastpath_timer_check(struct task_struct *tsk)
  * already updated our counts.  We need to check if any timers fire now.
  * Interrupts are disabled.
  */
-void __run_posix_cpu_timers(struct task_struct *tsk)
+void run_posix_cpu_timers(struct task_struct *tsk)
 {
 	LIST_HEAD(firing);
 	struct k_itimer *timer, *next;
 	unsigned long flags;
 
-	BUG_ON_NONRT(!irqs_disabled());
+	BUG_ON(!irqs_disabled());
 
 	/*
 	 * The fast path checks that there are no expired thread or thread
@@ -1369,177 +1370,6 @@ void __run_posix_cpu_timers(struct task_struct *tsk)
 		spin_unlock(&timer->it_lock);
 	}
 }
-
-#include <linux/kthread.h>
-#include <linux/cpu.h>
-DEFINE_PER_CPU(struct task_struct *, posix_timer_task);
-DEFINE_PER_CPU(struct task_struct *, posix_timer_tasklist);
-
-static int posix_cpu_timers_thread(void *data)
-{
-	int cpu = (long)data;
-
-	BUG_ON(per_cpu(posix_timer_task,cpu) != current);
-
-	while (!kthread_should_stop()) {
-		struct task_struct *tsk = NULL;
-		struct task_struct *next = NULL;
-
-		if (cpu_is_offline(cpu))
-			goto wait_to_die;
-
-		/* grab task list */
-		raw_local_irq_disable();
-		tsk = per_cpu(posix_timer_tasklist, cpu);
-		per_cpu(posix_timer_tasklist, cpu) = NULL;
-		raw_local_irq_enable();
-
-		/* its possible the list is empty, just return */
-		if (!tsk) {
-			set_current_state(TASK_INTERRUPTIBLE);
-			schedule();
-			__set_current_state(TASK_RUNNING);
-			continue;
-		}
-
-		/* Process task list */
-		while (1) {
-			/* save next */
-			next = tsk->posix_timer_list;
-
-			/* run the task timers, clear its ptr and
-			 * unreference it
-			 */
-			__run_posix_cpu_timers(tsk);
-			tsk->posix_timer_list = NULL;
-			put_task_struct(tsk);
-
-			/* check if this is the last on the list */
-			if (next == tsk)
-				break;
-			tsk = next;
-		}
-	}
-	return 0;
-
-wait_to_die:
-	/* Wait for kthread_stop */
-	set_current_state(TASK_INTERRUPTIBLE);
-	while (!kthread_should_stop()) {
-		schedule();
-		set_current_state(TASK_INTERRUPTIBLE);
-	}
-	__set_current_state(TASK_RUNNING);
-	return 0;
-}
-
-static inline int __fastpath_timer_check(struct task_struct *tsk)
-{
-	/* tsk == current, ensure it is safe to use ->signal/sighand */
-	if (unlikely(tsk->exit_state))
-		return 0;
-
-	if (!task_cputime_zero(&tsk->cputime_expires))
-			return 1;
-
-	if (!task_cputime_zero(&tsk->signal->cputime_expires))
-			return 1;
-
-	return 0;
-}
-
-void run_posix_cpu_timers(struct task_struct *tsk)
-{
-	unsigned long cpu = smp_processor_id();
-	struct task_struct *tasklist;
-
-	BUG_ON(!irqs_disabled());
-	if(!per_cpu(posix_timer_task, cpu))
-		return;
-	/* get per-cpu references */
-	tasklist = per_cpu(posix_timer_tasklist, cpu);
-
-	/* check to see if we're already queued */
-	if (!tsk->posix_timer_list && __fastpath_timer_check(tsk)) {
-		get_task_struct(tsk);
-		if (tasklist) {
-			tsk->posix_timer_list = tasklist;
-		} else {
-			/*
-			 * The list is terminated by a self-pointing
-			 * task_struct
-			 */
-			tsk->posix_timer_list = tsk;
-		}
-		per_cpu(posix_timer_tasklist, cpu) = tsk;
-
-		wake_up_process(per_cpu(posix_timer_task, cpu));
-	}
-}
-
-/*
- * posix_cpu_thread_call - callback that gets triggered when a CPU is added.
- * Here we can start up the necessary migration thread for the new CPU.
- */
-static int posix_cpu_thread_call(struct notifier_block *nfb,
-				 unsigned long action, void *hcpu)
-{
-	int cpu = (long)hcpu;
-	struct task_struct *p;
-	struct sched_param param;
-
-	switch (action) {
-	case CPU_UP_PREPARE:
-		p = kthread_create(posix_cpu_timers_thread, hcpu,
-					"posixcputmr/%d",cpu);
-		if (IS_ERR(p))
-			return NOTIFY_BAD;
-		p->flags |= PF_NOFREEZE;
-		kthread_bind(p, cpu);
-		/* Must be high prio to avoid getting starved */
-		param.sched_priority = MAX_RT_PRIO-1;
-		sched_setscheduler(p, SCHED_FIFO, &param);
-		per_cpu(posix_timer_task,cpu) = p;
-		break;
-	case CPU_ONLINE:
-		/* Strictly unneccessary, as first user will wake it. */
-		wake_up_process(per_cpu(posix_timer_task,cpu));
-		break;
-#ifdef CONFIG_HOTPLUG_CPU
-	case CPU_UP_CANCELED:
-		/* Unbind it from offline cpu so it can run.  Fall thru. */
-		kthread_bind(per_cpu(posix_timer_task,cpu),
-			     any_online_cpu(cpu_online_map));
-		kthread_stop(per_cpu(posix_timer_task,cpu));
-		per_cpu(posix_timer_task,cpu) = NULL;
-		break;
-	case CPU_DEAD:
-		kthread_stop(per_cpu(posix_timer_task,cpu));
-		per_cpu(posix_timer_task,cpu) = NULL;
-		break;
-#endif
-	}
-	return NOTIFY_OK;
-}
-
-/* Register at highest priority so that task migration (migrate_all_tasks)
- * happens before everything else.
- */
-static struct notifier_block __devinitdata posix_cpu_thread_notifier = {
-	.notifier_call = posix_cpu_thread_call,
-	.priority = 10
-};
-
-static int __init posix_cpu_thread_init(void)
-{
-	void *cpu = (void *)(long)smp_processor_id();
-	/* Start one for boot CPU. */
-	posix_cpu_thread_call(&posix_cpu_thread_notifier, CPU_UP_PREPARE, cpu);
-	posix_cpu_thread_call(&posix_cpu_thread_notifier, CPU_ONLINE, cpu);
-	register_cpu_notifier(&posix_cpu_thread_notifier);
-	return 0;
-}
-early_initcall(posix_cpu_thread_init);
 
 /*
  * Set one of the process-wide special case CPU timers or RLIMIT_CPU.
@@ -1789,11 +1619,6 @@ static __init int init_posix_cpu_timers(void)
 		.timer_create	= thread_cpu_timer_create,
 	};
 	struct timespec ts;
-	unsigned long cpu;
-
-	/* init the per-cpu posix_timer_tasklets */
-	for_each_cpu_mask(cpu, cpu_possible_map)
-		per_cpu(posix_timer_tasklist, cpu) = NULL;
 
 	posix_timers_register_clock(CLOCK_PROCESS_CPUTIME_ID, &process);
 	posix_timers_register_clock(CLOCK_THREAD_CPUTIME_ID, &thread);

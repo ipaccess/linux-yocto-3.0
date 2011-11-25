@@ -142,8 +142,6 @@ struct cpu_hw_events {
 	 * AMD specific bits
 	 */
 	struct amd_nb		*amd_nb;
-
-	void			*kfree_on_online;
 };
 
 #define __EVENT_CONSTRAINT(c, n, m, w) {\
@@ -1454,12 +1452,10 @@ static int __cpuinit
 x86_pmu_notifier(struct notifier_block *self, unsigned long action, void *hcpu)
 {
 	unsigned int cpu = (long)hcpu;
-	struct cpu_hw_events *cpuc = &per_cpu(cpu_hw_events, cpu);
 	int ret = NOTIFY_OK;
 
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPU_UP_PREPARE:
-		cpuc->kfree_on_online = NULL;
 		if (x86_pmu.cpu_prepare)
 			ret = x86_pmu.cpu_prepare(cpu);
 		break;
@@ -1467,10 +1463,6 @@ x86_pmu_notifier(struct notifier_block *self, unsigned long action, void *hcpu)
 	case CPU_STARTING:
 		if (x86_pmu.cpu_starting)
 			x86_pmu.cpu_starting(cpu);
-		break;
-
-	case CPU_ONLINE:
-		kfree(cpuc->kfree_on_online);
 		break;
 
 	case CPU_DYING:
@@ -1863,6 +1855,9 @@ perf_callchain_user(struct perf_callchain_entry *entry, struct pt_regs *regs)
 	fp = (void __user *)regs->bp;
 
 	perf_callchain_store(entry, regs->ip);
+
+	if (!current->mm)
+		return;
 
 	if (perf_callchain_user32(regs, entry))
 		return;
