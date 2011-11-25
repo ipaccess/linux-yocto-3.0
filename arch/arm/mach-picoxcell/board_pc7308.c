@@ -23,6 +23,29 @@
 #include "mux.h"
 #include "picoxcell_core.h"
 
+static long pc7308_panic_blink(int state)
+{
+	__raw_writel(state ? 0x01 : 0, IO_ADDRESS(PICOXCELL_GPIO_BASE +
+					    GPIO_SW_PORT_D_DR_REG_OFFSET));
+	return 0;
+}
+
+static void pc7308_panic_init(void)
+{
+	/*
+	 * We have a BOOT_ERROR pin on PC7308. Reuse that for signalling when
+	 * the kernel panics.
+	 *
+	 * Note: There is only 1 bit wired up to port D
+	 */
+	__raw_writel(0x01, IO_ADDRESS(PICOXCELL_GPIO_BASE +
+			       GPIO_SW_PORT_D_DDR_REG_OFFSET));
+	__raw_writel(0x00, IO_ADDRESS(PICOXCELL_GPIO_BASE +
+			       GPIO_SW_PORT_D_CTL_REG_OFFSET));
+
+	panic_blink = pc7308_panic_blink;
+}
+
 static struct mtd_partition pc7308_nand_parts[] = {
 	{
 		.name	= "Nand First Stage 0",
@@ -106,6 +129,7 @@ static void __init pc7308_init(void)
 
 	pc7308_register_uarts();
 	pc7308_init_nand();
+	pc7308_panic_init();
 }
 
 MACHINE_START(PC7308, "PC7308")
