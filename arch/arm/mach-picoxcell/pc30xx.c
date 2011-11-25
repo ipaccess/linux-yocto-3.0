@@ -895,6 +895,12 @@ static void pc30xx_add_trng(void)
 	picoxcell_add_trng(PC3X3_RNG_BASE);
 }
 
+static void pc30xx_add_emac(void)
+{
+	picoxcell_add_emac(PICOXCELL_EMAC_BASE, IRQ_EMAC, 0);
+}
+
+
 static void __init pc30xx_init(void)
 {
 	unsigned long device_id = axi2cfg_readl(AXI2CFG_DEVICE_ID_REG_OFFSET);
@@ -917,6 +923,7 @@ static void __init pc30xx_init(void)
 	pc30xx_add_ts();
 	pc30xx_add_otp();
 	pc30xx_add_trng();
+	pc30xx_add_emac();
 }
 
 const struct picoxcell_soc pc30xx_soc __initconst = {
