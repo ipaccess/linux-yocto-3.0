@@ -659,7 +659,7 @@ static inline void rt_spin_lock_fastunlock(struct rt_mutex *lock,
 		slowfn(lock);
 }
 
-#ifdef CONFIG_SMP_X
+#ifdef CONFIG_SMP
 /*
  * Note that owner is a speculative pointer and dereferencing relies
  * on rcu_read_lock() and the check against the lock owner.

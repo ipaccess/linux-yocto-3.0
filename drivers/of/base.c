@@ -170,6 +170,7 @@ struct property *of_find_property(const struct device_node *np,
 
 	return pp;
 }
+EXPORT_SYMBOL(of_find_property);
 
 /**
  * of_find_all_nodes - Get next node in global list

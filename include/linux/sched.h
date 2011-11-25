@@ -91,6 +91,7 @@ struct sched_param {
 #include <linux/task_io_accounting.h>
 #include <linux/latencytop.h>
 #include <linux/cred.h>
+#include <linux/hardirq.h>
 
 #include <asm/processor.h>
 
@@ -665,8 +666,9 @@ struct signal_struct {
  * Bits in flags field of signal_struct.
  */
 #define SIGNAL_STOP_STOPPED	0x00000001 /* job control stop in effect */
-#define SIGNAL_STOP_CONTINUED	0x00000002 /* SIGCONT since WCONTINUED reap */
-#define SIGNAL_GROUP_EXIT	0x00000004 /* group exit in progress */
+#define SIGNAL_STOP_DEQUEUED	0x00000002 /* stop signal dequeued */
+#define SIGNAL_STOP_CONTINUED	0x00000004 /* SIGCONT since WCONTINUED reap */
+#define SIGNAL_GROUP_EXIT	0x00000008 /* group exit in progress */
 /*
  * Pending notifications to parent.
  */
@@ -1259,15 +1261,17 @@ struct task_struct {
 #endif
 
 	unsigned int policy;
+#ifdef CONFIG_PREEMPT_RT_FULL
 	int migrate_disable;
+#ifdef CONFIG_SCHED_DEBUG
+	int migrate_disable_atomic;
+#endif
+#endif
 	cpumask_t cpus_allowed;
 
 #ifdef CONFIG_PREEMPT_RCU
 	int rcu_read_lock_nesting;
 	char rcu_read_unlock_special;
-#if defined(CONFIG_RCU_BOOST) && defined(CONFIG_TREE_PREEMPT_RCU)
-	int rcu_boosted;
-#endif /* #if defined(CONFIG_RCU_BOOST) && defined(CONFIG_TREE_PREEMPT_RCU) */
 	struct list_head rcu_node_entry;
 #endif /* #ifdef CONFIG_PREEMPT_RCU */
 #ifdef CONFIG_TREE_PREEMPT_RCU
@@ -1297,7 +1301,6 @@ struct task_struct {
 	int exit_state;
 	int exit_code, exit_signal;
 	int pdeath_signal;  /*  The signal sent when the parent dies  */
-	unsigned int group_stop;	/* GROUP_STOP_*, siglock protected */
 	/* ??? */
 	unsigned int personality;
 	unsigned did_exec:1;
@@ -1361,7 +1364,9 @@ struct task_struct {
 
 	struct task_cputime cputime_expires;
 	struct list_head cpu_timers[3];
+#ifdef CONFIG_PREEMPT_RT_BASE
 	struct task_struct *posix_timer_list;
+#endif
 
 /* process credentials */
 	const struct cred __rcu *real_cred; /* objective and real subjective task
@@ -1413,6 +1418,11 @@ struct task_struct {
 #endif
 	seccomp_t seccomp;
 
+#ifdef CONFIG_UTRACE
+	struct utrace *utrace;
+	unsigned long utrace_flags;
+#endif
+
 /* Thread group tracking */
    	u32 parent_exec_id;
    	u32 self_exec_id;
@@ -1439,7 +1449,9 @@ struct task_struct {
 	/* mutex deadlock detection */
 	struct mutex_waiter *blocked_on;
 #endif
+#ifdef CONFIG_PREEMPT_RT_FULL
 	int pagefault_disabled;
+#endif
 #ifdef CONFIG_TRACE_IRQFLAGS
 	unsigned int irq_events;
 	unsigned long hardirq_enable_ip;
@@ -1593,6 +1605,17 @@ struct task_struct {
 	pte_t kmap_pte[KM_TYPE_NR];
 #endif
 };
+
+#ifdef CONFIG_PREEMPT_RT_FULL
+static inline bool cur_pf_disabled(void) { return current->pagefault_disabled; }
+#else
+static inline bool cur_pf_disabled(void) { return false; }
+#endif
+
+static inline bool pagefault_disabled(void)
+{
+	return in_atomic() || cur_pf_disabled();
+}
 
 /*
  * Priority of a process goes from 0..MAX_PRIO-1, valid RT
@@ -1842,17 +1865,6 @@ extern void thread_group_times(struct task_struct *p, cputime_t *ut, cputime_t *
 #define tsk_used_math(p) ((p)->flags & PF_USED_MATH)
 #define used_math() tsk_used_math(current)
 
-/*
- * task->group_stop flags
- */
-#define GROUP_STOP_SIGMASK	0xffff    /* signr of the last group stop */
-#define GROUP_STOP_PENDING	(1 << 16) /* task should stop for group stop */
-#define GROUP_STOP_CONSUME	(1 << 17) /* consume group stop count */
-#define GROUP_STOP_TRAPPING	(1 << 18) /* switching from STOPPED to TRACED */
-#define GROUP_STOP_DEQUEUED	(1 << 19) /* stop signal dequeued */
-
-extern void task_clear_group_stop_pending(struct task_struct *task);
-
 #ifdef CONFIG_PREEMPT_RCU
 
 #define RCU_READ_UNLOCK_BLOCKED (1 << 0) /* blocked while in RCU read-side. */
@@ -1967,7 +1979,6 @@ static inline void disable_sched_clock_irqtime(void) {}
 
 extern unsigned long long
 task_sched_runtime(struct task_struct *task);
-extern unsigned long long thread_group_sched_runtime(struct task_struct *task);
 
 /* sched_exec is called by processes performing an exec */
 #ifdef CONFIG_SMP
@@ -2195,6 +2206,7 @@ extern int kill_pgrp(struct pid *pid, int sig, int priv);
 extern int kill_pid(struct pid *pid, int sig, int priv);
 extern int kill_proc_info(int, struct siginfo *, pid_t);
 extern int do_notify_parent(struct task_struct *, int);
+extern void do_notify_parent_cldstop(struct task_struct *, int);
 extern void __wake_up_parent(struct task_struct *p, struct task_struct *parent);
 extern void force_sig(int, struct task_struct *);
 extern int send_sig(int, struct task_struct *, int);
@@ -2648,11 +2660,22 @@ static inline void set_task_cpu(struct task_struct *p, unsigned int cpu)
 
 #endif /* CONFIG_SMP */
 
+static inline int __migrate_disabled(struct task_struct *p)
+{
+#ifdef CONFIG_PREEMPT_RT_FULL
+	return p->migrate_disable;
+#else
+	return 0;
+#endif
+}
+
 /* Future-safe accessor for struct task_struct's cpus_allowed. */
 static inline const struct cpumask *tsk_cpus_allowed(struct task_struct *p)
 {
+#ifdef CONFIG_PREEMPT_RT_FULL
 	if (p->migrate_disable)
 		return cpumask_of(task_cpu(p));
+#endif
 
 	return &p->cpus_allowed;
 }

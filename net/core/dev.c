@@ -2902,17 +2902,45 @@ int netif_rx_ni(struct sk_buff *skb)
 {
 	int err;
 
-	preempt_disable_nort();
-	migrate_disable_rt();
+	migrate_disable();
 	err = netif_rx(skb);
 	if (local_softirq_pending())
 		thread_do_softirq();
-	migrate_enable_rt();
-	preempt_enable_nort();
+	migrate_enable();
 
 	return err;
 }
 EXPORT_SYMBOL(netif_rx_ni);
+
+#ifdef CONFIG_PREEMPT_RT_FULL
+/*
+ * RT runs ksoftirqd as a real time thread and the root_lock is a
+ * "sleeping spinlock". If the trylock fails then we can go into an
+ * infinite loop when ksoftirqd preempted the task which actually
+ * holds the lock, because we requeue q and raise NET_TX softirq
+ * causing ksoftirqd to loop forever.
+ *
+ * It's safe to use spin_lock on RT here as softirqs run in thread
+ * context and cannot deadlock against the thread which is holding
+ * root_lock.
+ *
+ * On !RT the trylock might fail, but there we bail out from the
+ * softirq loop after 10 attempts which we can't do on RT. And the
+ * task holding root_lock cannot be preempted, so the only downside of
+ * that trylock is that we need 10 loops to decide that we should have
+ * given up in the first one :)
+ */
+static inline int take_root_lock(spinlock_t *lock)
+{
+	spin_lock(lock);
+	return 1;
+}
+#else
+static inline int take_root_lock(spinlock_t *lock)
+{
+	return spin_trylock(lock);
+}
+#endif
 
 static void net_tx_action(struct softirq_action *h)
 {
@@ -2952,7 +2980,7 @@ static void net_tx_action(struct softirq_action *h)
 			head = head->next_sched;
 
 			root_lock = qdisc_lock(q);
-			if (spin_trylock(root_lock)) {
+			if (take_root_lock(root_lock)) {
 				smp_mb__before_clear_bit();
 				clear_bit(__QDISC_STATE_SCHED,
 					  &q->state);
@@ -6117,6 +6145,7 @@ int dev_change_net_namespace(struct net_device *dev, struct net *net, const char
 	*/
 	call_netdevice_notifiers(NETDEV_UNREGISTER, dev);
 	call_netdevice_notifiers(NETDEV_UNREGISTER_BATCH, dev);
+	rtmsg_ifinfo(RTM_DELLINK, dev, ~0U);
 
 	/*
 	 *	Flush the unicast and multicast chains

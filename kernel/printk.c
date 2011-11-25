@@ -21,6 +21,7 @@
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/console.h>
+#include <linux/sysrq.h>
 #include <linux/init.h>
 #include <linux/jiffies.h>
 #include <linux/nmi.h>
@@ -541,6 +542,13 @@ asmlinkage void early_printk(const char *fmt, ...)
  */
 static int __read_mostly printk_killswitch;
 
+static int __init force_early_printk_setup(char *str)
+{
+	printk_killswitch = 1;
+	return 0;
+}
+early_param("force_early_printk", force_early_printk_setup);
+
 void printk_kill(void)
 {
 	printk_killswitch = 1;
@@ -824,8 +832,8 @@ static int console_trylock_for_printk(unsigned int cpu, unsigned long flags)
 	__releases(&logbuf_lock)
 {
 #ifdef CONFIG_PREEMPT_RT_FULL
-	int lock = !early_boot_irqs_disabled && !irqs_disabled_flags(flags) &&
-		!preempt_count();
+	int lock = (!early_boot_irqs_disabled && !irqs_disabled_flags(flags) &&
+		!preempt_count()) || sysrq_in_progress;
 #else
 	int lock = 1;
 #endif
@@ -1274,8 +1282,8 @@ void printk_tick(void)
 
 int printk_needs_cpu(int cpu)
 {
-	if (cpu_is_offline(cpu))
-		printk_tick();
+	if (unlikely(cpu_is_offline(cpu)))
+		__this_cpu_write(printk_pending, 0);
 	return __this_cpu_read(printk_pending);
 }
 
@@ -1650,7 +1658,7 @@ static int __init printk_late_init(void)
 	struct console *con;
 
 	for_each_console(con) {
-		if (con->flags & CON_BOOT) {
+		if (!keep_bootcon && con->flags & CON_BOOT) {
 			printk(KERN_INFO "turn off boot console %s%d\n",
 				con->name, con->index);
 			unregister_console(con);

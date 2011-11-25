@@ -315,12 +315,6 @@ void __init boot_cpu_id_too_large(int cpu)
 }
 #endif
 
-static inline void register_prom_console(void)
-{
-	early_console = &prom_early_console;
-	register_console(&prom_early_console);
-}
-
 /* On Ultra, we support all of the v8 capabilities. */
 unsigned long sparc64_elf_hwcap = (HWCAP_SPARC_FLUSH | HWCAP_SPARC_STBAR |
 				   HWCAP_SPARC_SWAP | HWCAP_SPARC_MULDIV |
@@ -342,7 +336,7 @@ static const char *hwcaps[] = {
 void cpucap_info(struct seq_file *m)
 {
 	unsigned long caps = sparc64_elf_hwcap;
-	int i, printed = 0;[M#<I
+	int i, printed = 0;
 
 	seq_puts(m, "cpucaps\t\t: ");
 	for (i = 0; i < ARRAY_SIZE(hwcaps); i++) {
@@ -446,8 +440,14 @@ static void __init init_sparc64_elf_hwcap(void)
 			cap |= AV_SPARC_VIS;
 		if (tlb_type == cheetah || tlb_type == cheetah_plus)
 			cap |= AV_SPARC_VIS | AV_SPARC_VIS2;
-		if (tlb_type == cheetah_plus)
-			cap |= AV_SPARC_POPC;
+		if (tlb_type == cheetah_plus) {
+			unsigned long impl, ver;
+
+			__asm__ __volatile__("rdpr %%ver, %0" : "=r" (ver));
+			impl = ((ver >> 32) & 0xffff);
+			if (impl == PANTHER_IMPL)
+				cap |= AV_SPARC_POPC;
+		}
 		if (tlb_type == hypervisor) {
 			if (sun4v_chip_type == SUN4V_CHIP_NIAGARA1)
 				cap |= AV_SPARC_ASI_BLK_INIT;
@@ -467,6 +467,12 @@ static void __init init_sparc64_elf_hwcap(void)
 
 	if (sparc64_elf_hwcap & AV_SPARC_POPC)
 		popc_patch();
+}
+
+static inline void register_prom_console(void)
+{
+	early_console = &prom_early_console;
+	register_console(&prom_early_console);
 }
 
 void __init setup_arch(char **cmdline_p)

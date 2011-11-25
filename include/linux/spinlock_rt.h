@@ -132,7 +132,7 @@ static inline unsigned long spin_lock_trace_flags(spinlock_t *lock)
 	} while (0)
 
 #define spin_trylock_bh(lock)	__cond_lock(lock, rt_spin_trylock_bh(lock))
-#define spin_trylock_irq(lock)	__cond_lock(lock, rt_spin_trylock(lock))
+#define spin_trylock_irq(lock)	spin_trylock(lock)
 
 #define spin_trylock_irqsave(lock, flags)	\
 	rt_spin_trylock_irqsave(lock, &(flags))

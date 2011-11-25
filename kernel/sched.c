@@ -71,6 +71,7 @@
 #include <linux/ctype.h>
 #include <linux/ftrace.h>
 #include <linux/slab.h>
+#include <linux/init_task.h>
 
 #include <asm/tlb.h>
 #include <asm/irq_regs.h>
@@ -2403,7 +2404,12 @@ static int select_fallback_rq(int cpu, struct task_struct *p)
 		printk(KERN_INFO "process %d (%s) no longer affine to cpu%d\n",
 				task_pid_nr(p), p->comm, cpu);
 	}
-
+	/*
+	 * Clear PF_THREAD_BOUND, otherwise we wreckage
+	 * migrate_disable/enable. See optimization for
+	 * PF_THREAD_BOUND tasks there.
+	 */
+	p->flags &= ~PF_THREAD_BOUND;
 	return dest_cpu;
 }
 
@@ -2822,7 +2828,7 @@ static void __sched_fork(struct task_struct *p)
 void sched_fork(struct task_struct *p)
 {
 	unsigned long flags;
-	int cpu;
+	int cpu = get_cpu();
 
 	__sched_fork(p);
 	/*
@@ -2862,7 +2868,6 @@ void sched_fork(struct task_struct *p)
 	if (!rt_prio(p->prio))
 		p->sched_class = &fair_sched_class;
 
-	cpu = get_cpu();
 	if (p->sched_class->task_fork)
 		p->sched_class->task_fork(p);
 
@@ -2874,9 +2879,8 @@ void sched_fork(struct task_struct *p)
 	 * Silence PROVE_RCU.
 	 */
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
-	set_task_cpu(p, smp_processor_id());
+	set_task_cpu(p, cpu);
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
-	put_cpu();
 
 #if defined(CONFIG_SCHEDSTATS) || defined(CONFIG_TASK_DELAY_ACCT)
 	if (likely(sched_info_on()))
@@ -2892,6 +2896,8 @@ void sched_fork(struct task_struct *p)
 #ifdef CONFIG_SMP
 	plist_node_init(&p->pushable_tasks, MAX_PRIO);
 #endif
+
+	put_cpu();
 }
 
 /*
@@ -3714,30 +3720,6 @@ unsigned long long task_sched_runtime(struct task_struct *p)
 }
 
 /*
- * Return sum_exec_runtime for the thread group.
- * In case the task is currently running, return the sum plus current's
- * pending runtime that have not been accounted yet.
- *
- * Note that the thread group might have other running tasks as well,
- * so the return value not includes other pending runtime that other
- * running tasks might have.
- */
-unsigned long long thread_group_sched_runtime(struct task_struct *p)
-{
-	struct task_cputime totals;
-	unsigned long flags;
-	struct rq *rq;
-	u64 ns;
-
-	rq = task_rq_lock(p, &flags);
-	thread_group_cputime(p, &totals);
-	ns = totals.sum_exec_runtime + do_task_delta_exec(p, rq);
-	task_rq_unlock(rq, p, &flags);
-
-	return ns;
-}
-
-/*
  * Account user cpu time to a process.
  * @p: the process that the cpu time gets accounted to
  * @cputime: the cpu time spent in user space since the last update
@@ -4207,6 +4189,126 @@ static inline void schedule_debug(struct task_struct *prev)
 	schedstat_inc(this_rq(), sched_count);
 }
 
+#if defined(CONFIG_PREEMPT_RT_FULL) && defined(CONFIG_SMP)
+#define MIGRATE_DISABLE_SET_AFFIN	(1<<30) /* Can't make a negative */
+#define migrate_disabled_updated(p)	((p)->migrate_disable & MIGRATE_DISABLE_SET_AFFIN)
+#define migrate_disable_count(p)	((p)->migrate_disable & ~MIGRATE_DISABLE_SET_AFFIN)
+
+static inline void update_migrate_disable(struct task_struct *p)
+{
+	const struct cpumask *mask;
+
+	if (likely(!p->migrate_disable))
+		return;
+
+	/* Did we already update affinity? */
+	if (unlikely(migrate_disabled_updated(p)))
+		return;
+
+	/*
+	 * Since this is always current we can get away with only locking
+	 * rq->lock, the ->cpus_allowed value can normally only be changed
+	 * while holding both p->pi_lock and rq->lock, but seeing that this
+	 * is current, we cannot actually be waking up, so all code that
+	 * relies on serialization against p->pi_lock is out of scope.
+	 *
+	 * Having rq->lock serializes us against things like
+	 * set_cpus_allowed_ptr() that can still happen concurrently.
+	 */
+	mask = tsk_cpus_allowed(p);
+
+	if (p->sched_class->set_cpus_allowed)
+		p->sched_class->set_cpus_allowed(p, mask);
+	p->rt.nr_cpus_allowed = cpumask_weight(mask);
+
+	/* Let migrate_enable know to fix things back up */
+	p->migrate_disable |= MIGRATE_DISABLE_SET_AFFIN;
+}
+
+void migrate_disable(void)
+{
+	struct task_struct *p = current;
+
+	if (in_atomic() || p->flags & PF_THREAD_BOUND) {
+#ifdef CONFIG_SCHED_DEBUG
+		p->migrate_disable_atomic++;
+#endif
+		return;
+	}
+
+#ifdef CONFIG_SCHED_DEBUG
+	WARN_ON_ONCE(p->migrate_disable_atomic);
+#endif
+
+	preempt_disable();
+	if (p->migrate_disable) {
+		p->migrate_disable++;
+		preempt_enable();
+		return;
+	}
+
+	pin_current_cpu();
+	p->migrate_disable = 1;
+	preempt_enable();
+}
+EXPORT_SYMBOL_GPL(migrate_disable);
+
+void migrate_enable(void)
+{
+	struct task_struct *p = current;
+	const struct cpumask *mask;
+	unsigned long flags;
+	struct rq *rq;
+
+	if (in_atomic() || p->flags & PF_THREAD_BOUND) {
+#ifdef CONFIG_SCHED_DEBUG
+		p->migrate_disable_atomic--;
+#endif
+		return;
+	}
+
+#ifdef CONFIG_SCHED_DEBUG
+	WARN_ON_ONCE(p->migrate_disable_atomic);
+#endif
+	WARN_ON_ONCE(p->migrate_disable <= 0);
+
+	preempt_disable();
+	if (migrate_disable_count(p) > 1) {
+		p->migrate_disable--;
+		preempt_enable();
+		return;
+	}
+
+	if (unlikely(migrate_disabled_updated(p))) {
+		/*
+		 * Undo whatever update_migrate_disable() did, also see there
+		 * about locking.
+		 */
+		rq = this_rq();
+		raw_spin_lock_irqsave(&rq->lock, flags);
+
+		/*
+		 * Clearing migrate_disable causes tsk_cpus_allowed to
+		 * show the tasks original cpu affinity.
+		 */
+		p->migrate_disable = 0;
+		mask = tsk_cpus_allowed(p);
+		if (p->sched_class->set_cpus_allowed)
+			p->sched_class->set_cpus_allowed(p, mask);
+		p->rt.nr_cpus_allowed = cpumask_weight(mask);
+		raw_spin_unlock_irqrestore(&rq->lock, flags);
+	} else
+		p->migrate_disable = 0;
+
+	unpin_current_cpu();
+	preempt_enable();
+}
+EXPORT_SYMBOL_GPL(migrate_enable);
+#else
+static inline void update_migrate_disable(struct task_struct *p) { }
+#define migrate_disabled_updated(p)		0
+#endif
+
 static void put_prev_task(struct rq *rq, struct task_struct *prev)
 {
 	if (prev->on_rq || rq->skip_clock_update < 0)
@@ -4265,6 +4367,8 @@ need_resched:
 		hrtick_clear(rq);
 
 	raw_spin_lock_irq(&rq->lock);
+
+	update_migrate_disable(prev);
 
 	switch_count = &prev->nivcsw;
 	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) {
@@ -4340,7 +4444,7 @@ static inline void sched_update_worker(struct task_struct *tsk)
 		wq_worker_running(tsk);
 }
 
-asmlinkage void schedule(void)
+asmlinkage void __sched schedule(void)
 {
 	struct task_struct *tsk = current;
 
@@ -4433,7 +4537,16 @@ asmlinkage void __sched notrace preempt_schedule(void)
 
 	do {
 		add_preempt_count_notrace(PREEMPT_ACTIVE);
+		/*
+		 * The add/subtract must not be traced by the function
+		 * tracer. But we still want to account for the
+		 * preempt off latency tracer. Since the _notrace versions
+		 * of add/subtract skip the accounting for latency tracer
+		 * we must force it manually.
+		 */
+		start_critical_timings();
 		__schedule();
+		stop_critical_timings();
 		sub_preempt_count_notrace(PREEMPT_ACTIVE);
 
 		/*
@@ -5054,7 +5167,13 @@ EXPORT_SYMBOL(task_nice);
  */
 int idle_cpu(int cpu)
 {
-	return cpu_curr(cpu) == cpu_rq(cpu)->idle;
+	struct rq *rq = cpu_rq(cpu);
+
+#ifdef CONFIG_SMP
+	return rq->curr == rq->idle && !rq->nr_running && !rq->wake_list;
+#else
+	return rq->curr == rq->idle && !rq->nr_running;
+#endif
 }
 
 /**
@@ -5991,6 +6110,9 @@ void __cpuinit init_idle(struct task_struct *idle, int cpu)
 	 */
 	idle->sched_class = &idle_sched_class;
 	ftrace_graph_init_idle_task(idle, cpu);
+#if defined(CONFIG_SMP)
+	sprintf(idle->comm, "%s/%d", INIT_TASK_COMM, cpu);
+#endif
 }
 
 /*
@@ -6052,7 +6174,7 @@ static inline void sched_init_granularity(void)
 #ifdef CONFIG_SMP
 void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 {
-	if (!p->migrate_disable) {
+	if (!migrate_disabled_updated(p)) {
 		if (p->sched_class && p->sched_class->set_cpus_allowed)
 			p->sched_class->set_cpus_allowed(p, new_mask);
 		p->rt.nr_cpus_allowed = cpumask_weight(new_mask);
@@ -6108,7 +6230,7 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
 	do_set_cpus_allowed(p, new_mask);
 
 	/* Can the task run on the task's current CPU? If so, we're done */
-	if (cpumask_test_cpu(task_cpu(p), new_mask) || p->migrate_disable)
+	if (cpumask_test_cpu(task_cpu(p), new_mask) || __migrate_disabled(p))
 		goto out;
 
 	dest_cpu = cpumask_any_and(cpu_active_mask, new_mask);
@@ -6126,83 +6248,6 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(set_cpus_allowed_ptr);
-
-void migrate_disable(void)
-{
-	struct task_struct *p = current;
-	const struct cpumask *mask;
-	unsigned long flags;
-	struct rq *rq;
-
-	preempt_disable();
-	if (p->migrate_disable) {
-		p->migrate_disable++;
-		preempt_enable();
-		return;
-	}
-
-	pin_current_cpu();
-	if (unlikely(!scheduler_running)) {
-		p->migrate_disable = 1;
-		preempt_enable();
-		return;
-	}
-	rq = task_rq_lock(p, &flags);
-	p->migrate_disable = 1;
-	mask = tsk_cpus_allowed(p);
-
-	WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
-
-	if (!cpumask_equal(&p->cpus_allowed, mask)) {
-		if (p->sched_class->set_cpus_allowed)
-			p->sched_class->set_cpus_allowed(p, mask);
-		p->rt.nr_cpus_allowed = cpumask_weight(mask);
-	}
-	task_rq_unlock(rq, p, &flags);
-	preempt_enable();
-}
-EXPORT_SYMBOL_GPL(migrate_disable);
-
-void migrate_enable(void)
-{
-	struct task_struct *p = current;
-	const struct cpumask *mask;
-	unsigned long flags;
-	struct rq *rq;
-
-	WARN_ON_ONCE(p->migrate_disable <= 0);
-
-	preempt_disable();
-	if (p->migrate_disable > 1) {
-		p->migrate_disable--;
-		preempt_enable();
-		return;
-	}
-
-	if (unlikely(!scheduler_running)) {
-		p->migrate_disable = 0;
-		unpin_current_cpu();
-		preempt_enable();
-		return;
-	}
-
-	rq = task_rq_lock(p, &flags);
-	p->migrate_disable = 0;
-	mask = tsk_cpus_allowed(p);
-
-	WARN_ON(!cpumask_test_cpu(smp_processor_id(), mask));
-
-	if (!cpumask_equal(&p->cpus_allowed, mask)) {
-		if (p->sched_class->set_cpus_allowed)
-			p->sched_class->set_cpus_allowed(p, mask);
-		p->rt.nr_cpus_allowed = cpumask_weight(mask);
-	}
-
-	task_rq_unlock(rq, p, &flags);
-	unpin_current_cpu();
-	preempt_enable();
-}
-EXPORT_SYMBOL_GPL(migrate_enable);
 
 /*
  * Move (not current) task off this cpu, onto dest cpu. We're doing
@@ -7558,6 +7603,7 @@ static void __sdt_free(const struct cpumask *cpu_map)
 			struct sched_domain *sd = *per_cpu_ptr(sdd->sd, j);
 			if (sd && (sd->flags & SD_OVERLAP))
 				free_sched_groups(sd->groups, 0);
+			kfree(*per_cpu_ptr(sdd->sd, j));
 			kfree(*per_cpu_ptr(sdd->sg, j));
 			kfree(*per_cpu_ptr(sdd->sgp, j));
 		}

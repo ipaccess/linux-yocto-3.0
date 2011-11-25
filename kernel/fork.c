@@ -87,7 +87,7 @@ int max_threads;		/* tunable limit on nr_threads */
 
 DEFINE_PER_CPU(unsigned long, process_counts) = 0;
 
-__cacheline_aligned DEFINE_RWLOCK(tasklist_lock);  /* outer */
+DEFINE_RWLOCK(tasklist_lock);  /* outer */
 
 #ifdef CONFIG_PROVE_RCU
 int lockdep_tasklist_lock_is_held(void)
@@ -168,6 +168,7 @@ void free_task(struct task_struct *tsk)
 	free_thread_info(tsk->stack);
 	rt_mutex_debug_task_free(tsk);
 	ftrace_graph_exit_task(tsk);
+	tracehook_free_task(tsk);
 	free_task_struct(tsk);
 }
 EXPORT_SYMBOL(free_task);
@@ -1054,7 +1055,9 @@ void mm_init_owner(struct mm_struct *mm, struct task_struct *p)
  */
 static void posix_cpu_timers_init(struct task_struct *tsk)
 {
+#ifdef CONFIG_PREEMPT_RT_BASE
 	tsk->posix_timer_list = NULL;
+#endif
 	tsk->cputime_expires.prof_exp = cputime_zero;
 	tsk->cputime_expires.virt_exp = cputime_zero;
 	tsk->cputime_expires.sched_exp = 0;
@@ -1119,6 +1122,8 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	p = dup_task_struct(current);
 	if (!p)
 		goto fork_out;
+
+	tracehook_init_task(p);
 
 	ftrace_graph_init_task(p);
 
@@ -1220,7 +1225,9 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	p->hardirq_context = 0;
 	p->softirq_context = 0;
 #endif
+#ifdef CONFIG_PREEMPT_RT_FULL
 	p->pagefault_disabled = 0;
+#endif
 #ifdef CONFIG_LOCKDEP
 	p->lockdep_depth = 0; /* no locks held yet */
 	p->curr_chain_key = 0;
