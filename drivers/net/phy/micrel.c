@@ -42,6 +42,11 @@
 #define KS8737_CTRL_INT_ACTIVE_HIGH		(1 << 14)
 #define KSZ8051_RMII_50MHZ_CLK			(1 << 7)
 
+#define KSZ_INT_LU_EN	(1 << 8)	/* enable Link Up interrupt */
+#define KSZ_INT_RF_EN	(1 << 9)	/* enable Remote Fault interrupt */
+#define KSZ_INT_LD_EN	(1 << 10)	/* enable Link Down interrupt */
+#define KSZ_INT_INIT	(KSZ_INT_LU_EN | KSZ_INT_LD_EN)
+
 static int kszphy_ack_interrupt(struct phy_device *phydev)
 {
 	/* bit[7..0] int status, which is a read and clear register. */
@@ -112,6 +117,19 @@ static int ks8051_config_init(struct phy_device *phydev)
 	}
 
 	return 0;
+}
+
+static int ksz8041_config_intr(struct phy_device *phydev)
+{
+	int err;
+
+	if (phydev->interrupts == PHY_INTERRUPT_ENABLED)
+		err = phy_write(phydev, MII_KSZPHY_INTCS,
+				KSZ_INT_INIT);
+	else
+		err = phy_write(phydev, MII_KSZPHY_INTCS, 0);
+
+	return err;
 }
 
 static struct phy_driver ks8737_driver = {
@@ -185,6 +203,22 @@ static struct phy_driver ksz9021_driver = {
 	.ack_interrupt	= kszphy_ack_interrupt,
 	.config_intr	= ksz9021_config_intr,
 	.driver		= { .owner = THIS_MODULE, },
+};
+
+static struct phy_driver ksz8041_driver = {
+	.phy_id		= 0x00221512,
+	.name		= "Micrel KSZ8041",
+	.phy_id_mask	= 0x001fffff,
+	.features	= PHY_BASIC_FEATURES,
+	.flags		= PHY_HAS_INTERRUPT,
+	.config_init	= kszphy_config_init,
+	.config_aneg	= genphy_config_aneg,
+	.read_status	= genphy_read_status,
+	.ack_interrupt	= kszphy_ack_interrupt,
+	.config_intr	= ksz8041_config_intr,
+	.driver	= {
+		.owner	= THIS_MODULE,
+	},
 };
 
 static int __init ksphy_init(void)
