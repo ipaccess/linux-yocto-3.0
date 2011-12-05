@@ -619,7 +619,8 @@ static void concat_sync(struct mtd_info *mtd)
 
 	for (i = 0; i < concat->num_subdev; i++) {
 		struct mtd_info *subdev = concat->subdev[i];
-		subdev->sync(subdev);
+		if (subdev->sync)
+			subdev->sync(subdev);
 	}
 }
 
