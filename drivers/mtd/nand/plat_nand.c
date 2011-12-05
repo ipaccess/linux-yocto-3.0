@@ -94,7 +94,18 @@ static int __devinit plat_nand_probe(struct platform_device *pdev)
 	}
 
 	/* Scan to find existence of the device */
-	if (nand_scan(&data->mtd, pdata->chip.nr_chips)) {
+	if (nand_scan_ident(&data->mtd, pdata->chip.nr_chips, NULL)) {
+		res = -ENXIO;
+		goto out;
+	}
+
+	if (pdata->chip.chip_fixup) {
+		res = pdata->chip.chip_fixup(&data->mtd);
+		if (res)
+			goto out;
+	}
+
+	if (nand_scan_tail(&data->mtd)) {
 		err = -ENXIO;
 		goto out;
 	}
