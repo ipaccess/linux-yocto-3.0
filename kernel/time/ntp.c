@@ -359,7 +359,7 @@ static enum hrtimer_restart ntp_leap_second(struct hrtimer *timer)
 	enum hrtimer_restart res = HRTIMER_NORESTART;
 	int leap = 0;
 
-	raw_write_seqlock(&xtime_lock);
+	write_seqlock(&xtime_lock);
 
 	switch (time_state) {
 	case TIME_OK:
@@ -387,7 +387,7 @@ static enum hrtimer_restart ntp_leap_second(struct hrtimer *timer)
 		break;
 	}
 
-	raw_write_sequnlock(&xtime_lock);
+	write_sequnlock(&xtime_lock);
 
 	if (leap != 0)
 		printk(KERN_NOTICE "Clock: %sing leap second 23:59:%d UTC\n",
