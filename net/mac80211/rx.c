@@ -140,8 +140,9 @@ ieee80211_add_rx_radiotap_header(struct ieee80211_local *local,
 	pos++;
 
 	/* IEEE80211_RADIOTAP_RATE */
-	if (status->flag & RX_FLAG_HT) {
+	if (!rate || status->flag & RX_FLAG_HT) {
 		/*
+		 * Without rate information don't add it. If we have,
 		 * MCS information is a separate field in radiotap,
 		 * added below. The byte here is needed as padding
 		 * for the channel though, so initialise it to 0.
@@ -162,12 +163,14 @@ ieee80211_add_rx_radiotap_header(struct ieee80211_local *local,
 	else if (status->flag & RX_FLAG_HT)
 		put_unaligned_le16(IEEE80211_CHAN_DYN | IEEE80211_CHAN_2GHZ,
 				   pos);
-	else if (rate->flags & IEEE80211_RATE_ERP_G)
+	else if (rate && rate->flags & IEEE80211_RATE_ERP_G)
 		put_unaligned_le16(IEEE80211_CHAN_OFDM | IEEE80211_CHAN_2GHZ,
 				   pos);
-	else
+	else if (rate)
 		put_unaligned_le16(IEEE80211_CHAN_CCK | IEEE80211_CHAN_2GHZ,
 				   pos);
+	else
+		put_unaligned_le16(IEEE80211_CHAN_2GHZ, pos);
 	pos += 2;
 
 	/* IEEE80211_RADIOTAP_DBM_ANTSIGNAL */
@@ -2853,7 +2856,7 @@ void ieee80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb)
 	struct ieee80211_supported_band *sband;
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
 
-	WARN_ON_ONCE_NONRT(softirq_count() == 0);
+	WARN_ON_ONCE(softirq_count() == 0);
 
 	if (WARN_ON(status->band < 0 ||
 		    status->band >= IEEE80211_NUM_BANDS))

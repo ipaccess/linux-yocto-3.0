@@ -205,7 +205,7 @@ extern void devm_free_irq(struct device *dev, unsigned int irq, void *dev_id);
 #ifdef CONFIG_LOCKDEP
 # define local_irq_enable_in_hardirq()	do { } while (0)
 #else
-# define local_irq_enable_in_hardirq()	local_irq_enable_nort()
+# define local_irq_enable_in_hardirq()	local_irq_enable()
 #endif
 
 extern void disable_irq_nosync(unsigned int irq);
@@ -380,13 +380,9 @@ static inline int disable_irq_wake(unsigned int irq)
 
 
 #ifdef CONFIG_IRQ_FORCED_THREADING
-# ifndef CONFIG_PREEMPT_RT_BASE
-   extern bool force_irqthreads;
-# else
-#  define force_irqthreads	(true)
-# endif
+extern bool force_irqthreads;
 #else
-#define force_irqthreads	(false)
+#define force_irqthreads	(0)
 #endif
 
 #ifndef __ARCH_SET_SOFTIRQ_PENDING
@@ -440,14 +436,8 @@ struct softirq_action
 	void	(*action)(struct softirq_action *);
 };
 
-#ifndef CONFIG_PREEMPT_RT_FULL
 asmlinkage void do_softirq(void);
 asmlinkage void __do_softirq(void);
-static inline void thread_do_softirq(void) { do_softirq(); }
-#else
-extern void thread_do_softirq(void);
-#endif
-
 extern void open_softirq(int nr, void (*action)(struct softirq_action *));
 extern void softirq_init(void);
 static inline void __raise_softirq_irqoff(unsigned int nr)
@@ -458,8 +448,6 @@ static inline void __raise_softirq_irqoff(unsigned int nr)
 
 extern void raise_softirq_irqoff(unsigned int nr);
 extern void raise_softirq(unsigned int nr);
-
-extern void softirq_check_pending_idle(void);
 
 /* This is the worklist that queues up per-cpu softirq work.
  *
@@ -637,12 +625,6 @@ void tasklet_hrtimer_cancel(struct tasklet_hrtimer *ttimer)
 	hrtimer_cancel(&ttimer->timer);
 	tasklet_kill(&ttimer->tasklet);
 }
-
-#ifdef CONFIG_PREEMPT_RT_FULL
-extern void softirq_early_init(void);
-#else
-static inline void softirq_early_init(void) { }
-#endif
 
 /*
  * Autoprobing for irqs:
