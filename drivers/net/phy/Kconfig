@@ -120,6 +120,10 @@ config RTL8306_PHY
 	tristate "Driver for Realtek RTL8306S switches"
 	select SWCONFIG
 
+config IP17XX_PHY
+	tristate "Driver for IC+ IP17xx switches"
+	select SWCONFIG
+
 config FIXED_PHY
 	bool "Driver for MDIO Bus/PHY emulation with fixed speed/link PHYs"
 	depends on PHYLIB=y

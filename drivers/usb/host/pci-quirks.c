@@ -439,6 +439,8 @@ reset_needed:
 }
 EXPORT_SYMBOL_GPL(uhci_check_and_reset_hc);
 
+#ifndef CONFIG_PCI_DISABLE_COMMON_QUIRKS
+
 static inline int io_type_enabled(struct pci_dev *pdev, unsigned int mask)
 {
 	u16 cmd;
@@ -892,3 +894,5 @@ static void __devinit quirk_usb_early_handoff(struct pci_dev *pdev)
 		quirk_usb_handoff_xhci(pdev);
 }
 DECLARE_PCI_FIXUP_FINAL(PCI_ANY_ID, PCI_ANY_ID, quirk_usb_early_handoff);
+
+#endif
