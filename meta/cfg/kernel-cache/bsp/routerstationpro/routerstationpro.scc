@@ -3,18 +3,26 @@ kconf hardware watchdog.cfg
 include cfg/usb-mass-storage.scc
 include cfg/vfat.scc
 
-patch Add-arch-suport-for-ar71xx.patch
-patch Add-include-file-support-ar71xx.patch
-patch Add-gpio-support-for-nxp_74hc153.patch
-patch Add-pci-supoprt-for-ar7xxx.patch
-patch Add-leds-support-for-ar71xx.patch
-patch Add-mtd-support-ar71xx.patch
-patch Add-usb-controller-support-for-ar71xx.patch
-patch Add-net-driver-support-ar71xx.patch
-patch Add-spi-support-for-ar71xx.patch
-patch fix-mtd-bugs-for-ar71xx.patch
-patch Add-myloader-support-for-ar71xx.patch
-patch Add-generic-support-for-mips.patch
-patch Get-compare_irq-from-function.patch
-patch Add-NET_DSA_MV88E6063-support-for-ar71xx.patch
-patch fix-compiling-errors.patch
+# patch 0001-Updates-core-support-for-ar71xx.patch
+# patch 0002-Updates-pci-support-for-ar71xx.patch
+# patch 0003-Updates-usb-support-for-ar71xx.patch
+# patch 0004-Updates-spi-support-for-ar71xx.patch
+# patch 0005-Updates-mac-support-for-ar71xx.patch
+# patch 0006-Updates-watchdog-support-for-ar71xx.patch
+# patch 0007-Integrate-mips-fixes-from-3.0-for-ar71xx.patch
+# patch 0008-Integrate-mtd-fixes-from-3.0-for-ar71xx.patch
+# patch 0009-updates-tty-support-for-ar71xx.patch
+# patch 0010-Updates-leds-support-for-ar71xx.patch
+# patch 0011-Updates-GPIO-support-for-ar71xx.patch
+# patch 0012-Integrate-some-boot-fixes-for-ar71xx.patch
+# patch 0013-Integrate-network-related-features-from-3.0-for-ar71.patch
+# patch 0014-drivers-ag71xx-fix-error-mii-control-read.patch
+# patch 0015-usb-ar71xx-fix-HC_LENGTH-error-usage.patch
+# patch 0016-usb-ar71xx-fix-compile-error-for-ehci-PM.patch
+# patch 0017-net-phy-fix-wrong-logic-of-ar71xx-phy-register.patch
+# patch 0018-ag71xx-swconfig-used-by-default-from-codes-scope.patch
+# patch 0019-mtd-ar71xx-fix-mtd-compiling-error.patch
+# patch 0020-Integrated-some-fixes-from-3.0.patch
+# patch 0021-Updates-squashfs-jffs-yaffs2-from-3.0.patch
+# patch 0022-Updates-some-devices-fixes-from-3.0.patch
+# patch 0023-Integrate-overlay-filesystem.patch
