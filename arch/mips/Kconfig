@@ -985,10 +985,6 @@ config MIPS_MACHINE
 config MIPS_MACHINE
 	def_bool n
 
-config IMAGE_CMDLINE_HACK
-	bool "OpenWrt specific image command line hack"
-	default n
-
 config NO_IOPORT
 	def_bool n
 
