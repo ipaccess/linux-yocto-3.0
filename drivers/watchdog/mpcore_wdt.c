@@ -99,7 +99,9 @@ static void mpcore_wdt_keepalive(struct mpcore_wdt *wdt)
 
 	spin_lock(&wdt_lock);
 	/* Assume prescale is set to 256 */
-	count = (twd_timer_get_rate() / 256) * mpcore_margin;
+	count =  __raw_readl(wdt->base + TWD_WDOG_COUNTER);
+	count = (0xFFFFFFFFU - count) * (HZ / 5);
+	count = (count / 256) * mpcore_margin;
 
 	/* Reload the counter */
 	writel(count + wdt->perturb, wdt->base + TWD_WDOG_LOAD);
@@ -118,25 +120,18 @@ static void mpcore_wdt_stop(struct mpcore_wdt *wdt)
 
 static void mpcore_wdt_start(struct mpcore_wdt *wdt)
 {
-	u32 mode;
-
 	dev_printk(KERN_INFO, wdt->dev, "enabling watchdog.\n");
 
 	/* This loads the count register but does NOT start the count yet */
 	mpcore_wdt_keepalive(wdt);
 
-	/* Setup watchdog - prescale=256, enable=1 */
-	mode = (255 << 8) | TWD_WDOG_CONTROL_ENABLE;
-
 	if (mpcore_noboot) {
-		/* timer mode, send interrupt */
-		mode |=	TWD_WDOG_CONTROL_TIMER_MODE |
-				TWD_WDOG_CONTROL_IT_ENABLE;
+		/* Enable watchdog - prescale=256, watchdog mode=0, enable=1 */
+		writel(0x0000FF01, wdt->base + TWD_WDOG_CONTROL);
 	} else {
-		/* watchdog mode */
-		mode |=	TWD_WDOG_CONTROL_WATCHDOG_MODE;
+		/* Enable watchdog - prescale=256, watchdog mode=1, enable=1 */
+		writel(0x0000FF09, wdt->base + TWD_WDOG_CONTROL);
 	}
-	writel(mode, wdt->base + TWD_WDOG_CONTROL);
 }
 
 static int mpcore_wdt_set_heartbeat(int t)
@@ -240,8 +235,7 @@ static long mpcore_wdt_ioctl(struct file *file, unsigned int cmd,
 	if (_IOC_DIR(cmd) && _IOC_SIZE(cmd) > sizeof(uarg))
 		return -ENOTTY;
 
-	if ((_IOC_DIR(cmd) & _IOC_WRITE)
-			|| cmd == WDIOC_SETOPTIONS) {
+	if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		ret = copy_from_user(&uarg, (void __user *)arg, _IOC_SIZE(cmd));
 		if (ret)
 			return -EFAULT;
