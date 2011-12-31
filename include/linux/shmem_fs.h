@@ -12,6 +12,15 @@
 
 #define SHMEM_SYMLINK_INLINE_LEN (SHMEM_NR_DIRECT * sizeof(swp_entry_t))
 
+/*
+ * MIPS cache alias should be taken into accounts when msync.
+ */
+#ifndef cpu_has_dc_aliases
+#define CPU_HAS_CACHE_ALIAS 0
+#else
+#define CPU_HAS_CACHE_ALIAS cpu_has_dc_aliases
+#endif
+
 struct shmem_inode_info {
 	spinlock_t		lock;
 	unsigned long		flags;
@@ -49,6 +58,7 @@ static inline struct shmem_inode_info *SHMEM_I(struct inode *inode)
 /*
  * Functions in mm/shmem.c called directly from elsewhere:
  */
+extern const struct file_operations shmem_file_operations;
 extern int init_tmpfs(void);
 extern int shmem_fill_super(struct super_block *sb, void *data, int silent);
 extern struct file *shmem_file_setup(const char *name,

@@ -13,6 +13,8 @@
 #include <linux/file.h>
 #include <linux/syscalls.h>
 #include <linux/sched.h>
+#include <linux/shmem_fs.h>
+#include <asm/cacheflush.h>
 
 /*
  * MS_SYNC syncs the entire file - including mappings.
@@ -33,6 +35,7 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 	unsigned long end;
 	struct mm_struct *mm = current->mm;
 	struct vm_area_struct *vma;
+	struct file *file;
 	int unmapped_error = 0;
 	int error = -EINVAL;
 
@@ -56,8 +59,25 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 	 */
 	down_read(&mm->mmap_sem);
 	vma = find_vma(mm, start);
+
+#ifdef CONFIG_TMPFS
+	/*
+	 * For tmpfs, no matter which flag(ASYNC or SYNC) gets from msync,
+	 * there is not so much thing to do for CPUs without cache alias,
+	 * But for some CPUs with cache alias, msync has to flush cache
+	 * explicitly, which makes sure the data coherency between memory
+	 * file and cache.
+	 */
+	file =  vma->vm_file;
+	if (file && (file->f_op == &shmem_file_operations)) {
+		if(CPU_HAS_CACHE_ALIAS)
+			flush_cache_range(vma, start, start+len);
+		error = 0;
+		goto out_unlock;
+	}
+#endif
+
 	for (;;) {
-		struct file *file;
 
 		/* Still start < end. */
 		error = -ENOMEM;
