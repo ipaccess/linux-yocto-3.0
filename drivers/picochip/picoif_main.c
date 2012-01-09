@@ -867,7 +867,7 @@ picoif_ioctl_multi_reg_req( struct picoif_multi_reg_req __user *user_req,
             sg_mark_end( &sgl );
 
             ret = copy_from_user( bounce, &multi_reg_req.buf[ words_so_far ],
-                          sgl.length * sizeof( u32 ));
+                          sgl.length);
             words_so_far += sgl.length / sizeof( u32 );
 
             if ( ret )
