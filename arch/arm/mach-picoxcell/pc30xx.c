@@ -364,6 +364,8 @@ static struct clk_lookup pc30xx_clk_lookup[] = {
 	CLK_LOOKUP(NULL,		"ebi",		&ebi_clk),
 	CLK_LOOKUP("picoxcell-ipsec",	NULL,		&ipsec_clk),
 	CLK_LOOKUP("picoxcell-l2",	NULL,		&l2_engine_clk),
+	CLK_LOOKUP("picoxcell-ipsec-v2",NULL,		&ipsec_clk),
+	CLK_LOOKUP("picoxcell-l2-v2",	NULL,		&l2_engine_clk),
 	CLK_LOOKUP("picoxcell-trng",	NULL,		&trng_clk),
 	CLK_LOOKUP("picoxcell-fuse",	NULL,		&fuse_clk),
 	CLK_LOOKUP("picoxcell-otp-pc30xx", NULL,	&otp_clk),
