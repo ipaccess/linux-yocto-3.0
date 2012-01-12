@@ -502,7 +502,6 @@ pktman_release(struct inode *inode,
 		spin_unlock_bh(&pman->lock);
 
 		pman->state = PKTMAN_DEV_STATE_STOPPING;
-		spin_unlock_bh(&pman->lock);
 		picoif_directdma_close(pman->picoif);
 		if (dma_in_progress)
 			dma_unmap_sg(&pman->dev, pman->xfer_sg,
