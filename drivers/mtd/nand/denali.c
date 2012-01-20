@@ -88,6 +88,10 @@ MODULE_PARM_DESC(onfi_timing_mode, "Overrides default ONFI setting."
  * format the bank into the proper bits for the controller */
 #define BANK(x) ((x) << 24)
 
+/* DMA operation */
+#define DMA_INT_GENERATION  ( 1 << 24 )
+#define DMA_BURST_LENGTH    ( 8 << 16 )
+
 /* forward declarations */
 static void clear_interrupts(struct denali_nand_info *denali);
 static uint32_t wait_for_irq(struct denali_nand_info *denali,
@@ -159,7 +163,7 @@ static void reset_bank(struct denali_nand_info *denali)
 	irq_status = wait_for_irq(denali, irq_mask);
 
 	if (irq_status & INTR_STATUS__TIME_OUT)
-		dev_err(denali->dev, "reset bank failed.\n");
+		dev_err(denali->dev, "reset bank (#%d) failed.\n", denali->flash_bank);
 }
 
 /* Reset the flash controller */
@@ -994,19 +998,39 @@ static void denali_setup_dma(struct denali_nand_info *denali, int op)
 
 	mode = MODE_10 | BANK(denali->flash_bank);
 
-	/* DMA is a four step process */
+        if (denali->platform == MMIO) {
 
-	/* 1. setup transfer type and # of pages */
-	index_addr(denali, mode | denali->page, 0x2000 | op | page_count);
+                /* DMA is a three step process on Picochip Hoyle3 devices */
 
-	/* 2. set memory high address bits 23:8 */
-	index_addr(denali, mode | ((uint16_t)(addr >> 16) << 8), 0x2200);
+	        /* 1. setup transfer type (op) and # of pages */
+	        index_addr (denali, (uint32_t)(mode | denali->page),
+                            (uint32_t)(DMA_INT_GENERATION |
+                                       DMA_BURST_LENGTH |
+                                       0x2000 | op | page_count));
 
-	/* 3. set memory low address bits 23:8 */
-	index_addr(denali, mode | ((uint16_t)addr << 8), 0x2300);
+	        /* 2. set memory address bits 31:0 */
+	        index_addr (denali, (uint32_t)(mode | denali->page),
+                             (uint32_t)(addr));
 
-	/* 4.  interrupt when complete, burst len = 64 bytes*/
-	index_addr(denali, mode | 0x14000, 0x2400);
+	        /* 3. set memory address bits 64:32 */
+	        index_addr (denali, (uint32_t)(mode | denali->page),
+                             (uint32_t)(0));
+        }
+        else {
+        	/* DMA is a four step process */
+
+	        /* 1. setup transfer type and # of pages */
+	        index_addr(denali, mode | denali->page, 0x2000 | op | page_count);
+
+	        /* 2. set memory high address bits 23:8 */
+	        index_addr(denali, mode | ((uint16_t)(addr >> 16) << 8), 0x2200);
+
+	        /* 3. set memory low address bits 23:8 */
+	        index_addr(denali, mode | ((uint16_t)addr << 8), 0x2300);
+
+	        /* 4.  interrupt when complete, burst len = 64 bytes*/
+	        index_addr(denali, mode | 0x14000, 0x2400);
+        }
 }
 
 /* writes a page. user specifies type, and this function handles the

@@ -468,7 +468,8 @@
 struct nand_buf {
 	int head;
 	int tail;
-	uint8_t buf[DENALI_BUF_SIZE];
+__attribute__ ((aligned(64)))   /* required for 8 byte burst from dma */  
+        uint8_t buf[DENALI_BUF_SIZE];
 	dma_addr_t dma_buf;
 };
 
@@ -486,7 +487,7 @@ struct denali_nand_info {
 	struct device *dev;
 	int total_used_banks;
 	uint32_t block;  /* stored for future use */
-	uint16_t page;
+	uint32_t page;
 	void __iomem *flash_reg;  /* Mapped io reg base address */
 	void __iomem *flash_mem;  /* Mapped io reg base address */
 
