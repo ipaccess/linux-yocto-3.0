@@ -125,10 +125,8 @@ void irq_work_run(void)
 	if (this_cpu_read(irq_work_list) == NULL)
 		return;
 
-#ifndef CONFIG_PREEMPT_RT_FULL
 	BUG_ON(!in_irq());
 	BUG_ON(!irqs_disabled());
-#endif
 
 	list = this_cpu_xchg(irq_work_list, NULL);
 
