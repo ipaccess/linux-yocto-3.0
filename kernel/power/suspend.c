@@ -163,8 +163,6 @@ static int suspend_enter(suspend_state_t state)
 	arch_suspend_disable_irqs();
 	BUG_ON(!irqs_disabled());
 
-	system_state = SYSTEM_SUSPEND;
-
 	error = syscore_suspend();
 	if (!error) {
 		if (!(suspend_test(TEST_CORE) || pm_wakeup_pending())) {
@@ -173,8 +171,6 @@ static int suspend_enter(suspend_state_t state)
 		}
 		syscore_resume();
 	}
-
-	system_state = SYSTEM_RUNNING;
 
 	arch_suspend_enable_irqs();
 	BUG_ON(irqs_disabled());
