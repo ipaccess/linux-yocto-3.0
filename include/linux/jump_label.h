@@ -4,7 +4,7 @@
 #include <linux/types.h>
 #include <linux/compiler.h>
 
-#if defined(CC_HAVE_ASM_GOTO) && defined(CONFIG_JUMP_LABEL) && !defined(CONFIG_PREEMPT_BASE)
+#if defined(CC_HAVE_ASM_GOTO) && defined(CONFIG_JUMP_LABEL)
 
 struct jump_label_key {
 	atomic_t enabled;

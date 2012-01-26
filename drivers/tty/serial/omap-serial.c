@@ -946,12 +946,13 @@ serial_omap_console_write(struct console *co, const char *s,
 	unsigned int ier;
 	int locked = 1;
 
+	local_irq_save(flags);
 	if (up->port.sysrq)
 		locked = 0;
 	else if (oops_in_progress)
-		locked = spin_trylock_irqsave(&up->port.lock, flags);
+		locked = spin_trylock(&up->port.lock);
 	else
-		spin_lock_irqsave(&up->port.lock, flags);
+		spin_lock(&up->port.lock);
 
 	/*
 	 * First save the IER then disable the interrupts
@@ -978,7 +979,8 @@ serial_omap_console_write(struct console *co, const char *s,
 		check_modem_status(up);
 
 	if (locked)
-		spin_unlock_irqrestore(&up->port.lock, flags);
+		spin_unlock(&up->port.lock);
+	local_irq_restore(flags);
 }
 
 static int __init

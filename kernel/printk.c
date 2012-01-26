@@ -21,7 +21,6 @@
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/console.h>
-#include <linux/sysrq.h>
 #include <linux/init.h>
 #include <linux/jiffies.h>
 #include <linux/nmi.h>
@@ -44,6 +43,13 @@
 #include <linux/rculist.h>
 
 #include <asm/uaccess.h>
+
+/*
+ * Architectures can override it:
+ */
+void asmlinkage __attribute__((weak)) early_printk(const char *fmt, ...)
+{
+}
 
 #define __LOG_BUF_LEN	(1 << CONFIG_LOG_BUF_SHIFT)
 
@@ -94,7 +100,7 @@ static int console_locked, console_suspended;
  * It is also used in interesting ways to provide interlocking in
  * console_unlock();.
  */
-static DEFINE_RAW_SPINLOCK(logbuf_lock);
+static DEFINE_SPINLOCK(logbuf_lock);
 
 #define LOG_BUF_MASK (log_buf_len-1)
 #define LOG_BUF(idx) (log_buf[(idx) & LOG_BUF_MASK])
@@ -206,7 +212,7 @@ void __init setup_log_buf(int early)
 		return;
 	}
 
-	raw_spin_lock_irqsave(&logbuf_lock, flags);
+	spin_lock_irqsave(&logbuf_lock, flags);
 	log_buf_len = new_log_buf_len;
 	log_buf = new_log_buf;
 	new_log_buf_len = 0;
@@ -224,7 +230,7 @@ void __init setup_log_buf(int early)
 	log_start -= offset;
 	con_start -= offset;
 	log_end -= offset;
-	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+	spin_unlock_irqrestore(&logbuf_lock, flags);
 
 	pr_info("log_buf_len: %d\n", log_buf_len);
 	pr_info("early log buf free: %d(%d%%)\n",
@@ -357,18 +363,18 @@ int do_syslog(int type, char __user *buf, int len, bool from_file)
 		if (error)
 			goto out;
 		i = 0;
-		raw_spin_lock_irq(&logbuf_lock);
+		spin_lock_irq(&logbuf_lock);
 		while (!error && (log_start != log_end) && i < len) {
 			c = LOG_BUF(log_start);
 			log_start++;
-			raw_spin_unlock_irq(&logbuf_lock);
+			spin_unlock_irq(&logbuf_lock);
 			error = __put_user(c,buf);
 			buf++;
 			i++;
 			cond_resched();
-			raw_spin_lock_irq(&logbuf_lock);
+			spin_lock_irq(&logbuf_lock);
 		}
-		raw_spin_unlock_irq(&logbuf_lock);
+		spin_unlock_irq(&logbuf_lock);
 		if (!error)
 			error = i;
 		break;
@@ -391,7 +397,7 @@ int do_syslog(int type, char __user *buf, int len, bool from_file)
 		count = len;
 		if (count > log_buf_len)
 			count = log_buf_len;
-		raw_spin_lock_irq(&logbuf_lock);
+		spin_lock_irq(&logbuf_lock);
 		if (count > logged_chars)
 			count = logged_chars;
 		if (do_clear)
@@ -408,12 +414,12 @@ int do_syslog(int type, char __user *buf, int len, bool from_file)
 			if (j + log_buf_len < log_end)
 				break;
 			c = LOG_BUF(j);
-			raw_spin_unlock_irq(&logbuf_lock);
+			spin_unlock_irq(&logbuf_lock);
 			error = __put_user(c,&buf[count-1-i]);
 			cond_resched();
-			raw_spin_lock_irq(&logbuf_lock);
+			spin_lock_irq(&logbuf_lock);
 		}
-		raw_spin_unlock_irq(&logbuf_lock);
+		spin_unlock_irq(&logbuf_lock);
 		if (error)
 			break;
 		error = i;
@@ -503,7 +509,6 @@ static void __call_console_drivers(unsigned start, unsigned end)
 {
 	struct console *con;
 
-	migrate_disable();
 	for_each_console(con) {
 		if (exclusive_console && con != exclusive_console)
 			continue;
@@ -512,61 +517,7 @@ static void __call_console_drivers(unsigned start, unsigned end)
 				(con->flags & CON_ANYTIME)))
 			con->write(con, &LOG_BUF(start), end - start);
 	}
-	migrate_enable();
 }
-
-#ifdef CONFIG_EARLY_PRINTK
-struct console *early_console;
-
-static void early_vprintk(const char *fmt, va_list ap)
-{
-	char buf[512];
-	int n = vscnprintf(buf, sizeof(buf), fmt, ap);
-	if (early_console)
-		early_console->write(early_console, buf, n);
-}
-
-asmlinkage void early_printk(const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	early_vprintk(fmt, ap);
-	va_end(ap);
-}
-
-/*
- * This is independent of any log levels - a global
- * kill switch that turns off all of printk.
- *
- * Used by the NMI watchdog if early-printk is enabled.
- */
-static int __read_mostly printk_killswitch;
-
-static int __init force_early_printk_setup(char *str)
-{
-	printk_killswitch = 1;
-	return 0;
-}
-early_param("force_early_printk", force_early_printk_setup);
-
-void printk_kill(void)
-{
-	printk_killswitch = 1;
-}
-
-static int forced_early_printk(const char *fmt, va_list ap)
-{
-	if (!printk_killswitch)
-		return 0;
-	early_vprintk(fmt, ap);
-	return 1;
-}
-#else
-static inline int forced_early_printk(const char *fmt, va_list ap)
-{
-	return 0;
-}
-#endif
 
 static int __read_mostly ignore_loglevel;
 
@@ -736,7 +687,7 @@ static void zap_locks(void)
 	oops_timestamp = jiffies;
 
 	/* If a crash is occurring, make sure we can't deadlock */
-	raw_spin_lock_init(&logbuf_lock);
+	spin_lock_init(&logbuf_lock);
 	/* And make sure that we print immediately */
 	sema_init(&console_sem, 1);
 }
@@ -828,18 +779,12 @@ static inline int can_use_console(unsigned int cpu)
  * interrupts disabled. It should return with 'lockbuf_lock'
  * released but interrupts still disabled.
  */
-static int console_trylock_for_printk(unsigned int cpu, unsigned long flags)
+static int console_trylock_for_printk(unsigned int cpu)
 	__releases(&logbuf_lock)
 {
-#ifdef CONFIG_PREEMPT_RT_FULL
-	int lock = (!early_boot_irqs_disabled && !irqs_disabled_flags(flags) &&
-		!preempt_count()) || sysrq_in_progress;
-#else
-	int lock = 1;
-#endif
 	int retval = 0;
 
-	if (lock && console_trylock()) {
+	if (console_trylock()) {
 		retval = 1;
 
 		/*
@@ -855,7 +800,7 @@ static int console_trylock_for_printk(unsigned int cpu, unsigned long flags)
 		}
 	}
 	printk_cpu = UINT_MAX;
-	raw_spin_unlock(&logbuf_lock);
+	spin_unlock(&logbuf_lock);
 	return retval;
 }
 static const char recursion_bug_msg [] =
@@ -888,13 +833,6 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 	size_t plen;
 	char special;
 
-	/*
-	 * Fall back to early_printk if a debugging subsystem has
-	 * killed printk output
-	 */
-	if (unlikely(forced_early_printk(fmt, args)))
-		return 1;
-
 	boot_delay_msec();
 	printk_delay();
 
@@ -922,7 +860,7 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 	}
 
 	lockdep_off();
-	raw_spin_lock(&logbuf_lock);
+	spin_lock(&logbuf_lock);
 	printk_cpu = this_cpu;
 
 	if (recursion_bug) {
@@ -1015,15 +953,8 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 	 * will release 'logbuf_lock' regardless of whether it
 	 * actually gets the semaphore or not.
 	 */
-	if (console_trylock_for_printk(this_cpu, flags)) {
-#ifndef CONFIG_PREEMPT_RT_FULL
+	if (console_trylock_for_printk(this_cpu))
 		console_unlock();
-#else
-		raw_local_irq_restore(flags);
-		console_unlock();
-		raw_local_irq_save(flags);
-#endif
-	}
 
 	lockdep_on();
 out_restore_irqs:
@@ -1282,8 +1213,8 @@ void printk_tick(void)
 
 int printk_needs_cpu(int cpu)
 {
-	if (unlikely(cpu_is_offline(cpu)))
-		__this_cpu_write(printk_pending, 0);
+	if (cpu_is_offline(cpu))
+		printk_tick();
 	return __this_cpu_read(printk_pending);
 }
 
@@ -1321,23 +1252,18 @@ void console_unlock(void)
 	console_may_schedule = 0;
 
 	for ( ; ; ) {
-		raw_spin_lock_irqsave(&logbuf_lock, flags);
+		spin_lock_irqsave(&logbuf_lock, flags);
 		wake_klogd |= log_start - log_end;
 		if (con_start == log_end)
 			break;			/* Nothing to print */
 		_con_start = con_start;
 		_log_end = log_end;
 		con_start = log_end;		/* Flush */
-#ifndef CONFIG_PREEMPT_RT_FULL
-		raw_spin_unlock(&logbuf_lock);
+		spin_unlock(&logbuf_lock);
 		stop_critical_timings();	/* don't trace print latency */
 		call_console_drivers(_con_start, _log_end);
 		start_critical_timings();
 		local_irq_restore(flags);
-#else
-		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
-		call_console_drivers(_con_start, _log_end);
-#endif
 	}
 	console_locked = 0;
 
@@ -1346,7 +1272,7 @@ void console_unlock(void)
 		exclusive_console = NULL;
 
 	up(&console_sem);
-	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+	spin_unlock_irqrestore(&logbuf_lock, flags);
 	if (wake_klogd)
 		wake_up_klogd();
 }
@@ -1576,9 +1502,9 @@ void register_console(struct console *newcon)
 		 * console_unlock(); will print out the buffered messages
 		 * for us.
 		 */
-		raw_spin_lock_irqsave(&logbuf_lock, flags);
+		spin_lock_irqsave(&logbuf_lock, flags);
 		con_start = log_start;
-		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+		spin_unlock_irqrestore(&logbuf_lock, flags);
 		/*
 		 * We're about to replay the log buffer.  Only do this to the
 		 * just-registered console to avoid excessive message spam to
@@ -1785,10 +1711,10 @@ void kmsg_dump(enum kmsg_dump_reason reason)
 	/* Theoretically, the log could move on after we do this, but
 	   there's not a lot we can do about that. The new messages
 	   will overwrite the start of what we dump. */
-	raw_spin_lock_irqsave(&logbuf_lock, flags);
+	spin_lock_irqsave(&logbuf_lock, flags);
 	end = log_end & LOG_BUF_MASK;
 	chars = logged_chars;
-	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+	spin_unlock_irqrestore(&logbuf_lock, flags);
 
 	if (chars > end) {
 		s1 = log_buf + log_buf_len - chars + end;
