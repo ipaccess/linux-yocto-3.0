@@ -96,7 +96,7 @@ int __init picoxcell_add_uicc(unsigned long addr, int irq, int id,
 
 	uicc_cfg = axi2cfg_readl(AXI2CFG_UICC_CFG_REG_OFFSET);
 	uicc_cfg |= UICC_DATA_EN_MASK;
-	uicc_cfg &= ~UICC_DATA_INVERT_MASK;
+	uicc_cfg |= UICC_DATA_INVERT_MASK;
 	if (data_invert)
 		uicc_cfg |= UICC_DATA_INVERT_MASK;
 	axi2cfg_writel(uicc_cfg, AXI2CFG_UICC_CFG_REG_OFFSET);
