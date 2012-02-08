@@ -117,7 +117,7 @@ static void pc7308_register_uarts(void)
 		pr_err("failed to add uart0\n");
 
 	err = picoxcell_add_uicc(PC30XX_UART3_BASE, IRQ_PC30XX_UART3, 2,
-				 false);
+				 true);
 	if (err)
 		pr_err("failed to add uart based uicc controller\n");
 }
