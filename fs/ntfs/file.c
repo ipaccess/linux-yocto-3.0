@@ -1832,9 +1832,9 @@ static ssize_t ntfs_file_buffered_write(struct kiocb *iocb,
 	 * fails again.
 	 */
 	if (unlikely(NInoTruncateFailed(ni))) {
-		anon_down_write(&vi->i_alloc_sem);
+		down_write(&vi->i_alloc_sem);
 		err = ntfs_truncate(vi);
-		anon_up_write(&vi->i_alloc_sem);
+		up_write(&vi->i_alloc_sem);
 		if (err || NInoTruncateFailed(ni)) {
 			if (!err)
 				err = -EIO;

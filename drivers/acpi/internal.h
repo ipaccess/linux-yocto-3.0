@@ -23,8 +23,6 @@
 
 #define PREFIX "ACPI: "
 
-#include <linux/wait-simple.h>
-
 int init_acpi_device_notify(void);
 int acpi_scan_init(void);
 int acpi_sysfs_init(void);
@@ -61,10 +59,10 @@ struct acpi_ec {
 	unsigned long global_lock;
 	unsigned long flags;
 	struct mutex lock;
-	struct swait_head wait;
+	wait_queue_head_t wait;
 	struct list_head list;
 	struct transaction *curr;
-	raw_spinlock_t curr_lock;
+	spinlock_t curr_lock;
 };
 
 extern struct acpi_ec *first_ec;

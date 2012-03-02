@@ -60,7 +60,7 @@
 /*
  * lock for reading
  */
-static inline void __down_read(struct rw_anon_semaphore *sem)
+static inline void __down_read(struct rw_semaphore *sem)
 {
 	signed long old, new;
 
@@ -88,7 +88,7 @@ static inline void __down_read(struct rw_anon_semaphore *sem)
 /*
  * trylock for reading -- returns 1 if successful, 0 if contention
  */
-static inline int __down_read_trylock(struct rw_anon_semaphore *sem)
+static inline int __down_read_trylock(struct rw_semaphore *sem)
 {
 	signed long old, new;
 
@@ -119,8 +119,7 @@ static inline int __down_read_trylock(struct rw_anon_semaphore *sem)
 /*
  * lock for writing
  */
-static inline void
-__down_write_nested(struct rw_anon_semaphore *sem, int subclass)
+static inline void __down_write_nested(struct rw_semaphore *sem, int subclass)
 {
 	signed long old, new, tmp;
 
@@ -146,7 +145,7 @@ __down_write_nested(struct rw_anon_semaphore *sem, int subclass)
 		rwsem_down_write_failed(sem);
 }
 
-static inline void __down_write(struct rw_anon_semaphore *sem)
+static inline void __down_write(struct rw_semaphore *sem)
 {
 	__down_write_nested(sem, 0);
 }
@@ -154,7 +153,7 @@ static inline void __down_write(struct rw_anon_semaphore *sem)
 /*
  * trylock for writing -- returns 1 if successful, 0 if contention
  */
-static inline int __down_write_trylock(struct rw_anon_semaphore *sem)
+static inline int __down_write_trylock(struct rw_semaphore *sem)
 {
 	signed long old;
 
@@ -182,7 +181,7 @@ static inline int __down_write_trylock(struct rw_anon_semaphore *sem)
 /*
  * unlock after reading
  */
-static inline void __up_read(struct rw_anon_semaphore *sem)
+static inline void __up_read(struct rw_semaphore *sem)
 {
 	signed long old, new;
 
@@ -211,7 +210,7 @@ static inline void __up_read(struct rw_anon_semaphore *sem)
 /*
  * unlock after writing
  */
-static inline void __up_write(struct rw_anon_semaphore *sem)
+static inline void __up_write(struct rw_semaphore *sem)
 {
 	signed long old, new, tmp;
 
@@ -241,7 +240,7 @@ static inline void __up_write(struct rw_anon_semaphore *sem)
 /*
  * downgrade write lock to read lock
  */
-static inline void __downgrade_write(struct rw_anon_semaphore *sem)
+static inline void __downgrade_write(struct rw_semaphore *sem)
 {
 	signed long old, new, tmp;
 
@@ -270,7 +269,7 @@ static inline void __downgrade_write(struct rw_anon_semaphore *sem)
 /*
  * implement atomic add functionality
  */
-static inline void rwsem_atomic_add(long delta, struct rw_anon_semaphore *sem)
+static inline void rwsem_atomic_add(long delta, struct rw_semaphore *sem)
 {
 	signed long old, new;
 
@@ -296,8 +295,7 @@ static inline void rwsem_atomic_add(long delta, struct rw_anon_semaphore *sem)
 /*
  * implement exchange and add functionality
  */
-static inline long
-rwsem_atomic_update(long delta, struct rw_anon_semaphore *sem)
+static inline long rwsem_atomic_update(long delta, struct rw_semaphore *sem)
 {
 	signed long old, new;
 
