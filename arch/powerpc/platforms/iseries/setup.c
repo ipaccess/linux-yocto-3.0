@@ -581,7 +581,9 @@ static void iseries_shared_idle(void)
 		if (hvlpevent_is_pending())
 			process_iSeries_events();
 
-		schedule_preempt_disabled();
+		preempt_enable_no_resched();
+		schedule();
+		preempt_disable();
 	}
 }
 
@@ -608,7 +610,9 @@ static void iseries_dedicated_idle(void)
 
 		ppc64_runlatch_on();
 		tick_nohz_restart_sched_tick();
-		schedule_preempt_disabled();
+		preempt_enable_no_resched();
+		schedule();
+		preempt_disable();
 	}
 }
 

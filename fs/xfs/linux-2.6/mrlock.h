@@ -21,18 +21,18 @@
 #include <linux/rwsem.h>
 
 typedef struct {
-	struct rw_anon_semaphore	mr_lock;
+	struct rw_semaphore	mr_lock;
 #ifdef DEBUG
-	int				mr_writer;
+	int			mr_writer;
 #endif
 } mrlock_t;
 
 #ifdef DEBUG
 #define mrinit(mrp, name)	\
-	do { (mrp)->mr_writer = 0; init_anon_rwsem(&(mrp)->mr_lock); } while (0)
+	do { (mrp)->mr_writer = 0; init_rwsem(&(mrp)->mr_lock); } while (0)
 #else
 #define mrinit(mrp, name)	\
-	do { init_anon_rwsem(&(mrp)->mr_lock); } while (0)
+	do { init_rwsem(&(mrp)->mr_lock); } while (0)
 #endif
 
 #define mrlock_init(mrp, t,n,s)	mrinit(mrp, n)
@@ -40,12 +40,12 @@ typedef struct {
 
 static inline void mraccess_nested(mrlock_t *mrp, int subclass)
 {
-	anon_down_read_nested(&mrp->mr_lock, subclass);
+	down_read_nested(&mrp->mr_lock, subclass);
 }
 
 static inline void mrupdate_nested(mrlock_t *mrp, int subclass)
 {
-	anon_down_write_nested(&mrp->mr_lock, subclass);
+	down_write_nested(&mrp->mr_lock, subclass);
 #ifdef DEBUG
 	mrp->mr_writer = 1;
 #endif
@@ -53,12 +53,12 @@ static inline void mrupdate_nested(mrlock_t *mrp, int subclass)
 
 static inline int mrtryaccess(mrlock_t *mrp)
 {
-	return anon_down_read_trylock(&mrp->mr_lock);
+	return down_read_trylock(&mrp->mr_lock);
 }
 
 static inline int mrtryupdate(mrlock_t *mrp)
 {
-	if (!anon_down_write_trylock(&mrp->mr_lock))
+	if (!down_write_trylock(&mrp->mr_lock))
 		return 0;
 #ifdef DEBUG
 	mrp->mr_writer = 1;
@@ -71,12 +71,12 @@ static inline void mrunlock_excl(mrlock_t *mrp)
 #ifdef DEBUG
 	mrp->mr_writer = 0;
 #endif
-	anon_up_write(&mrp->mr_lock);
+	up_write(&mrp->mr_lock);
 }
 
 static inline void mrunlock_shared(mrlock_t *mrp)
 {
-	anon_up_read(&mrp->mr_lock);
+	up_read(&mrp->mr_lock);
 }
 
 static inline void mrdemote(mrlock_t *mrp)
@@ -84,7 +84,7 @@ static inline void mrdemote(mrlock_t *mrp)
 #ifdef DEBUG
 	mrp->mr_writer = 0;
 #endif
-	anon_downgrade_write(&mrp->mr_lock);
+	downgrade_write(&mrp->mr_lock);
 }
 
 #endif /* __XFS_SUPPORT_MRLOCK_H__ */
