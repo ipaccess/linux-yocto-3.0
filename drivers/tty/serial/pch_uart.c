@@ -1,5 +1,5 @@
 /*
- *Copyright (C) 2010 OKI SEMICONDUCTOR CO., LTD.
+ *Copyright (C) 2011 LAPIS Semiconductor Co., Ltd.
  *
  *This program is free software; you can redistribute it and/or modify
  *it under the terms of the GNU General Public License as published by
@@ -14,14 +14,20 @@
  *along with this program; if not, write to the Free Software
  *Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
+#include <linux/kernel.h>
 #include <linux/serial_reg.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/serial_core.h>
+#include <linux/tty.h>
+#include <linux/tty_flip.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/dmi.h>
+#include <linux/console.h>
+#include <linux/nmi.h>
+#include <linux/delay.h>
 
 #include <linux/dmaengine.h>
 #include <linux/pch_dma.h>
@@ -43,7 +49,8 @@ enum {
 
 /* Set the max number of UART port
  * Intel EG20T PCH: 4 port
- * OKI SEMICONDUCTOR ML7213 IOH: 3 port
+ * LAPIS Semiconductor ML7213 IOH: 3 port
+ * LAPIS Semiconductor ML7223 IOH: 2 port
 */
 #define PCH_UART_NR	4
 
@@ -137,8 +144,6 @@ enum {
 #define PCH_UART_DLL		0x00
 #define PCH_UART_DLM		0x01
 
-#define DIV_ROUND(a, b)	(((a) + ((b)/2)) / (b))
-
 #define PCH_UART_IID_RLS	(PCH_UART_IIR_REI)
 #define PCH_UART_IID_RDR	(PCH_UART_IIR_RRI)
 #define PCH_UART_IID_RDR_TO	(PCH_UART_IIR_RRI | PCH_UART_IIR_TOI)
@@ -196,6 +201,13 @@ enum {
 
 #define PCI_VENDOR_ID_ROHM		0x10DB
 
+#define BOTH_EMPTY (UART_LSR_TEMT | UART_LSR_THRE)
+
+#define DEFAULT_UARTCLK   1843200 /*   1.8432 MHz */
+#define CMITC_UARTCLK   192000000 /* 192.0000 MHz */
+#define FRI2_64_UARTCLK  64000000 /*  64.0000 MHz */
+#define FRI2_48_UARTCLK  48000000 /*  48.0000 MHz */
+
 struct pch_uart_buffer {
 	unsigned char *buf;
 	int size;
@@ -209,7 +221,7 @@ struct eg20t_port {
 	unsigned int iobase;
 	struct pci_dev *pdev;
 	int fifo_size;
-	int base_baud;
+	int uartclk;
 	int start_tx;
 	int start_rx;
 	int tx_empty;
@@ -274,14 +286,41 @@ static struct pch_uart_driver_data drv_dat[] = {
 	[pch_ml7831_uart1] = {PCH_UART_2LINE, 1},
 };
 
+#ifdef CONFIG_SERIAL_PCH_UART_CONSOLE
+static struct eg20t_port *pch_uart_ports[PCH_UART_NR];
+#endif
 static unsigned int default_baud = 9600;
+static unsigned int user_uartclk = 0;
 static const int trigger_level_256[4] = { 1, 64, 128, 224 };
 static const int trigger_level_64[4] = { 1, 16, 32, 56 };
 static const int trigger_level_16[4] = { 1, 4, 8, 14 };
 static const int trigger_level_1[4] = { 1, 1, 1, 1 };
 
+/* Return UART clock, checking for board specific clocks. */
+static int pch_uart_get_uartclk(void)
+{
+	const char *cmp;
+
+	if (user_uartclk)
+		return user_uartclk;
+
+	cmp = dmi_get_system_info(DMI_BOARD_NAME);
+	if (cmp && strstr(cmp, "CM-iTC"))
+		return CMITC_UARTCLK;
+
+	cmp = dmi_get_system_info(DMI_BIOS_VERSION);
+	if (cmp && strnstr(cmp, "FRI2", 4))
+		return FRI2_64_UARTCLK;
+
+	cmp = dmi_get_system_info(DMI_PRODUCT_NAME);
+	if (cmp && strstr(cmp, "Fish River Island II"))
+		return FRI2_48_UARTCLK;
+
+	return DEFAULT_UARTCLK;
+}
+
 static void pch_uart_hal_request(struct pci_dev *pdev, int fifosize,
-				 int base_baud)
+				 int uartclk)
 {
 	struct eg20t_port *priv = pci_get_drvdata(pdev);
 
@@ -320,7 +359,7 @@ static int pch_uart_hal_set_line(struct eg20t_port *priv, int baud,
 	unsigned int dll, dlm, lcr;
 	int div;
 
-	div = DIV_ROUND(priv->base_baud / 16, baud);
+	div = DIV_ROUND_CLOSEST(priv->uartclk / 16, baud);
 	if (div < 0 || USHRT_MAX <= div) {
 		dev_err(priv->port.dev, "Invalid Baud(div=0x%x)\n", div);
 		return -EINVAL;
@@ -602,7 +641,8 @@ static void pch_request_dma(struct uart_port *port)
 	dma_cap_zero(mask);
 	dma_cap_set(DMA_SLAVE, mask);
 
-	dma_dev = pci_get_bus_and_slot(2, PCI_DEVFN(0xa, 0)); /* Get DMA's dev
+	dma_dev = pci_get_bus_and_slot(priv->pdev->bus->number,
+				       PCI_DEVFN(0xa, 0)); /* Get DMA's dev
 								information */
 	/* Set Tx DMA */
 	param = &priv->param_tx;
@@ -1140,9 +1180,9 @@ static int pch_uart_startup(struct uart_port *port)
 	priv->tx_empty = 1;
 
 	if (port->uartclk)
-		priv->base_baud = port->uartclk;
+		priv->uartclk = port->uartclk;
 	else
-		port->uartclk = priv->base_baud;
+		port->uartclk = priv->uartclk;
 
 	pch_uart_hal_disable_interrupt(priv, PCH_UART_HAL_ALL_INT);
 	ret = pch_uart_hal_set_line(priv, default_baud,
@@ -1382,6 +1422,142 @@ static struct uart_ops pch_uart_ops = {
 	.verify_port = pch_uart_verify_port
 };
 
+#ifdef CONFIG_SERIAL_PCH_UART_CONSOLE
+
+/*
+ *	Wait for transmitter & holding register to empty
+ */
+static void wait_for_xmitr(struct eg20t_port *up, int bits)
+{
+	unsigned int status, tmout = 10000;
+
+	/* Wait up to 10ms for the character(s) to be sent. */
+	for (;;) {
+		status = ioread8(up->membase + UART_LSR);
+
+		if ((status & bits) == bits)
+			break;
+		if (--tmout == 0)
+			break;
+		udelay(1);
+	}
+
+	/* Wait up to 1s for flow control if necessary */
+	if (up->port.flags & UPF_CONS_FLOW) {
+		unsigned int tmout;
+		for (tmout = 1000000; tmout; tmout--) {
+			unsigned int msr = ioread8(up->membase + UART_MSR);
+			if (msr & UART_MSR_CTS)
+				break;
+			udelay(1);
+			touch_nmi_watchdog();
+		}
+	}
+}
+
+static void pch_console_putchar(struct uart_port *port, int ch)
+{
+	struct eg20t_port *priv =
+		container_of(port, struct eg20t_port, port);
+
+	wait_for_xmitr(priv, UART_LSR_THRE);
+	iowrite8(ch, priv->membase + PCH_UART_THR);
+}
+
+/*
+ *	Print a string to the serial port trying not to disturb
+ *	any possible real use of the port...
+ *
+ *	The console_lock must be held when we get here.
+ */
+static void
+pch_console_write(struct console *co, const char *s, unsigned int count)
+{
+	struct eg20t_port *priv;
+
+	unsigned long flags;
+	u8 ier;
+	int locked = 1;
+
+	priv = pch_uart_ports[co->index];
+
+	touch_nmi_watchdog();
+
+	local_irq_save(flags);
+	if (priv->port.sysrq) {
+		/* serial8250_handle_port() already took the lock */
+		locked = 0;
+	} else if (oops_in_progress) {
+		locked = spin_trylock(&priv->port.lock);
+	} else
+		spin_lock(&priv->port.lock);
+
+	/*
+	 *	First save the IER then disable the interrupts
+	 */
+	ier = ioread8(priv->membase + UART_IER);
+
+	pch_uart_hal_disable_interrupt(priv, PCH_UART_HAL_ALL_INT);
+
+	uart_console_write(&priv->port, s, count, pch_console_putchar);
+
+	/*
+	 *	Finally, wait for transmitter to become empty
+	 *	and restore the IER
+	 */
+	wait_for_xmitr(priv, BOTH_EMPTY);
+	iowrite8(ier, priv->membase + UART_IER);
+
+	if (locked)
+		spin_unlock(&priv->port.lock);
+	local_irq_restore(flags);
+}
+
+static int __init pch_console_setup(struct console *co, char *options)
+{
+	struct uart_port *port;
+	int baud = default_baud;
+	int bits = 8;
+	int parity = 'n';
+	int flow = 'n';
+
+	/*
+	 * Check whether an invalid uart number has been specified, and
+	 * if so, search for the first available port that does have
+	 * console support.
+	 */
+	if (co->index >= PCH_UART_NR)
+		co->index = 0;
+	port = &pch_uart_ports[co->index]->port;
+
+	if (!port || (!port->iobase && !port->membase))
+		return -ENODEV;
+
+	port->uartclk = pch_uart_get_uartclk();
+
+	if (options)
+		uart_parse_options(options, &baud, &parity, &bits, &flow);
+
+	return uart_set_options(port, co, baud, parity, bits, flow);
+}
+
+static struct uart_driver pch_uart_driver;
+
+static struct console pch_console = {
+	.name		= PCH_UART_DRIVER_DEVICE,
+	.write		= pch_console_write,
+	.device		= uart_console_device,
+	.setup		= pch_console_setup,
+	.flags		= CON_PRINTBUFFER | CON_ANYTIME,
+	.index		= -1,
+	.data		= &pch_uart_driver,
+};
+
+#define PCH_CONSOLE	(&pch_console)
+#else
+#define PCH_CONSOLE	NULL
+#endif
+
 static struct uart_driver pch_uart_driver = {
 	.owner = THIS_MODULE,
 	.driver_name = KBUILD_MODNAME,
@@ -1389,6 +1565,7 @@ static struct uart_driver pch_uart_driver = {
 	.major = 0,
 	.minor = 0,
 	.nr = PCH_UART_NR,
+	.cons = PCH_CONSOLE,
 };
 
 static struct eg20t_port *pch_uart_init_port(struct pci_dev *pdev,
@@ -1399,10 +1576,9 @@ static struct eg20t_port *pch_uart_init_port(struct pci_dev *pdev,
 	unsigned int iobase;
 	unsigned int mapbase;
 	unsigned char *rxbuf;
-	int fifosize, base_baud;
+	int fifosize;
 	int port_type;
 	struct pch_uart_driver_data *board;
-	const char *board_name;
 
 	board = &drv_dat[id->driver_data];
 	port_type = board->port_type;
@@ -1414,13 +1590,6 @@ static struct eg20t_port *pch_uart_init_port(struct pci_dev *pdev,
 	rxbuf = (unsigned char *)__get_free_page(GFP_KERNEL);
 	if (!rxbuf)
 		goto init_port_free_txbuf;
-
-	base_baud = 1843200; /* 1.8432MHz */
-
-	/* quirk for CM-iTC board */
-	board_name = dmi_get_system_info(DMI_BOARD_NAME);
-	if (board_name && strstr(board_name, "CM-iTC"))
-		base_baud = 192000000; /* 192.0MHz */
 
 	switch (port_type) {
 	case PORT_UNKNOWN:
@@ -1434,6 +1603,8 @@ static struct eg20t_port *pch_uart_init_port(struct pci_dev *pdev,
 		goto init_port_hal_free;
 	}
 
+	pci_enable_msi(pdev);
+
 	iobase = pci_resource_start(pdev, 0);
 	mapbase = pci_resource_start(pdev, 1);
 	priv->mapbase = mapbase;
@@ -1444,7 +1615,7 @@ static struct eg20t_port *pch_uart_init_port(struct pci_dev *pdev,
 	priv->rxbuf.size = PAGE_SIZE;
 
 	priv->fifo_size = fifosize;
-	priv->base_baud = base_baud;
+	priv->uartclk = pch_uart_get_uartclk();
 	priv->port_type = PORT_MAX_8250 + port_type + 1;
 	priv->port.dev = &pdev->dev;
 	priv->port.iobase = iobase;
@@ -1461,8 +1632,11 @@ static struct eg20t_port *pch_uart_init_port(struct pci_dev *pdev,
 	spin_lock_init(&priv->port.lock);
 
 	pci_set_drvdata(pdev, priv);
-	pch_uart_hal_request(pdev, fifosize, base_baud);
+	pch_uart_hal_request(pdev, fifosize, priv->uartclk);
 
+#ifdef CONFIG_SERIAL_PCH_UART_CONSOLE
+	pch_uart_ports[board->line_no] = priv;
+#endif
 	ret = uart_add_one_port(&pch_uart_driver, &priv->port);
 	if (ret < 0)
 		goto init_port_hal_free;
@@ -1470,6 +1644,9 @@ static struct eg20t_port *pch_uart_init_port(struct pci_dev *pdev,
 	return priv;
 
 init_port_hal_free:
+#ifdef CONFIG_SERIAL_PCH_UART_CONSOLE
+	pch_uart_ports[board->line_no] = NULL;
+#endif
 	free_page((unsigned long)rxbuf);
 init_port_free_txbuf:
 	kfree(priv);
@@ -1490,6 +1667,12 @@ static void pch_uart_pci_remove(struct pci_dev *pdev)
 	struct eg20t_port *priv;
 
 	priv = (struct eg20t_port *)pci_get_drvdata(pdev);
+
+	pci_disable_msi(pdev);
+
+#ifdef CONFIG_SERIAL_PCH_UART_CONSOLE
+	pch_uart_ports[priv->port.line] = NULL;
+#endif
 	pch_uart_exit_port(priv);
 	pci_disable_device(pdev);
 	kfree(priv);
@@ -1577,6 +1760,7 @@ static int __devinit pch_uart_pci_probe(struct pci_dev *pdev,
 	return ret;
 
 probe_disable_device:
+	pci_disable_msi(pdev);
 	pci_disable_device(pdev);
 probe_error:
 	return ret;
@@ -1619,3 +1803,4 @@ module_exit(pch_uart_module_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Intel EG20T PCH UART PCI Driver");
 module_param(default_baud, uint, S_IRUGO);
+module_param(user_uartclk, uint, S_IRUGO);
