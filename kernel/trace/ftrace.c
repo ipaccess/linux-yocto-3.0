@@ -3090,7 +3090,7 @@ ftrace_regex_release(struct inode *inode, struct file *file)
 				       orig_hash, iter->hash);
 		if (!ret && (iter->ops->flags & FTRACE_OPS_FL_ENABLED)
 		    && ftrace_enabled)
-			ftrace_run_update_code(FTRACE_ENABLE_CALLS);
+			ftrace_run_update_code(FTRACE_UPDATE_CALLS);
 
 		mutex_unlock(&ftrace_lock);
 	}
