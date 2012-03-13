@@ -115,13 +115,13 @@ static inline void pc30xx_clk_enable(struct clk *clk)
 	spin_unlock_irqrestore(&pc30xx_clk_lock, flags);
 }
 
-static int is_arm_pll (struct clk *clk) {
+static int is_arm_pll (struct clk *clk)
+{
 
 	int rc = strncmp(clk->name, "arm", 3);
 
 	return !rc;
 }
-
 
 /*
  * pll_calc_params() - calculate divf and divq for a given target rate.
@@ -209,16 +209,40 @@ static long pc30xx_pll_round_rate(struct clk *clk, unsigned long rate)
 	return pc30xx_pll_round_freq(freq);
 }
 
+static void get_current_divq (struct clk *clk, unsigned long *divq_original)
+{
+	struct pc30xx_pll *pll = to_pc30xx_pll(clk);
+
+	pll_calc_params(pll->current_freq, clk_get_rate(clk->parent),
+		        NULL, divq_original);
+}
+
 static int pc30xx_pll_set_rate(struct clk *clk, unsigned long target)
 {
-	unsigned long divf, divq, flags;
+	unsigned long divf, divq, divq_original, flags;
 	struct pc30xx_pll *pll = to_pc30xx_pll(clk);
 
 	pll_calc_params(target, clk_get_rate(clk->parent), &divf, &divq);
 
+        if (is_arm_pll(clk) && (target > pll->current_freq)) {
+                get_current_divq(clk, &divq_original);
+        }
+
 	spin_lock_irqsave(&pc30xx_clk_lock, flags);
 
 	axi2cfg_writel(divf, pll->set_base + PLL_DIVF_REG_OFFSET);
+
+        if (is_arm_pll(clk) && (target > pll->current_freq) &&
+            (divq < divq_original)) {
+
+                axi2cfg_writel(divq_original, pll->set_base + PLL_DIVQ_REG_OFFSET);
+                axi2cfg_writel(PLL_CHANGE_START_MASK,
+		       pll->set_base + PLL_CHANGE_REG_OFFSET);
+	        while (axi2cfg_readl(pll->set_base + PLL_CHANGE_REG_OFFSET) &
+	            PLL_CHANGE_ACTIVE_MASK)
+		        cpu_relax();
+        }
+
 	axi2cfg_writel(divq, pll->set_base + PLL_DIVQ_REG_OFFSET);
 	axi2cfg_writel(PLL_CHANGE_START_MASK,
 		       pll->set_base + PLL_CHANGE_REG_OFFSET);
