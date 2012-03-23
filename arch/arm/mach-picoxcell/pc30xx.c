@@ -667,6 +667,9 @@ static void pc30xx_add_gpio(void)
 				pc30xx_portb_names);
 	picoxcell_add_gpio_port(2, 23, PC30XX_GPIO_PIN_ARM_40,
 				pc30xx_portc_names);
+        platform_device_register_data(NULL, "sdgpio", -1, &pc30xx_sdgpio,
+                sizeof(pc30xx_sdgpio));
+
 }
 
 static struct picoxcell_fuse_map pc30xx_fuse_map = {
