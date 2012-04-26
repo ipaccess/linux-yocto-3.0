@@ -60,23 +60,6 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 	down_read(&mm->mmap_sem);
 	vma = find_vma(mm, start);
 
-#ifdef CONFIG_TMPFS
-	/*
-	 * For tmpfs, no matter which flag(ASYNC or SYNC) gets from msync,
-	 * there is not so much thing to do for CPUs without cache alias,
-	 * But for some CPUs with cache alias, msync has to flush cache
-	 * explicitly, which makes sure the data coherency between memory
-	 * file and cache.
-	 */
-	file =  vma->vm_file;
-	if (file && (file->f_op == &shmem_file_operations)) {
-		if(CPU_HAS_CACHE_ALIAS)
-			flush_cache_range(vma, start, start+len);
-		error = 0;
-		goto out_unlock;
-	}
-#endif
-
 	for (;;) {
 
 		/* Still start < end. */
@@ -97,6 +80,19 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 			goto out_unlock;
 		}
 		file = vma->vm_file;
+#ifdef CONFIG_TMPFS
+		/*
+		 * For tmpfs, no matter which flag(ASYNC or SYNC) gets from msync,
+		 * there is not so much thing to do for CPUs without cache alias,
+		 * But for some CPUs with cache alias, msync has to flush cache
+		 * explicitly, which makes sure the data coherency between memory
+		 * file and cache.
+		 */
+		if (file && (file->f_op == &shmem_file_operations)) {
+			if(CPU_HAS_CACHE_ALIAS)
+				flush_cache_range(vma, start, start+len);
+		}
+#endif
 		start = vma->vm_end;
 		if ((flags & MS_SYNC) && file &&
 				(vma->vm_flags & VM_SHARED)) {
