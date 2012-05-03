@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011 Picochip Ltd., Jamie Iles
+ * Copyright (c) 2010-2012 Picochip Ltd., Jamie Iles
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1267,8 +1267,8 @@ static void spacc_spacc_complete(unsigned long data)
 	spin_unlock_irqrestore(&engine->hw_lock, flags);
 
 	list_for_each_entry_safe(req, tmp, &completed, list) {
-		req->complete(req);
 		list_del(&req->list);
+		req->complete(req);
 	}
 }
 
