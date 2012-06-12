@@ -54,9 +54,9 @@ u64 uevent_next_seqnum(void)
 {
 	u64 seq;
 
-	spin_lock(&sequence_lock);
+	mutex_lock(&uevent_sock_mutex);
 	seq = ++uevent_seqnum;
-	spin_unlock(&sequence_lock);
+	mutex_unlock(&uevent_sock_mutex);
 
 	return seq;
 }
