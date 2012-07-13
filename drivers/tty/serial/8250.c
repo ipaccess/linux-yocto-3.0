@@ -990,7 +990,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 	if (!((status2 ^ status1) & UART_MCR_LOOP)) {
 		serial_outp(up, UART_LCR, 0);
 		serial_outp(up, UART_MCR, status1 ^ UART_MCR_LOOP);
-		serial_outp(up, UART_LCR, 0xE0);
+		serial_outp(up, UART_LCR, 0xA0);
 		status2 = serial_in(up, 0x02); /* EXCR1 */
 		serial_outp(up, UART_LCR, 0);
 		serial_outp(up, UART_MCR, status1);
