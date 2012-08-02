@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011 Picochip Ltd., Jamie Iles
+ * Copyright (c) 2010-2012 Picochip Ltd., Jamie Iles
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -124,6 +124,8 @@ static const char *picoxcell_get_partname(void)
 		part = "pc333";
 	else if (dev_id == 0x30)
 		part = "pc3008";
+	else if (dev_id == 0x31)
+		part = "pc3032";
 
 	return part;
 }
