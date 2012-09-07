@@ -71,6 +71,16 @@ config BOARD_PC7308
 	  takes the PC3008 device and includes NAND flash, SPI flash, 10/100
 	  Ethernet and a number of other femtocell peripherals.
 
+config BOARD_PC73032
+	bool "Support PC73032 Board"
+	default y
+	depends on PICOXCELL_PC30XX
+	select PICOXCELL_HAVE_TSU
+	help
+	  Include support for the Picochip PC73032 platform.  This platform
+	  takes the PC3032 device and includes NAND flash, SPI flash, 10/100/1000
+	  Ethernet and a number of other femtocell peripherals.
+
 config PICOXCELL_HAVE_TSU
 	bool
 

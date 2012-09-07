@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Picochip Ltd., Jamie Iles
+ * Copyright (c) 2011-2012 Picochip Ltd., Jamie Iles
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -958,7 +958,12 @@ static void __init pc30xx_init(void)
 		picoxcell_mux_register(pc30xx_hnb_mux,
 				       ARRAY_SIZE(pc30xx_hnb_mux));
 		break;
-
+	case 0x31:
+    	        picoxcell_mux_register(pc30xx_hnb_mux,
+				       ARRAY_SIZE(pc30xx_hnb_mux));
+                picoxcell_mux_register(pc30xx_labs_mux,
+				       ARRAY_SIZE(pc30xx_labs_mux));
+		break;
 	default:
 		panic("Unsupported device variant %lx\n", device_id);
 	}
