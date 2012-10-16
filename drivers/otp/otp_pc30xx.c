@@ -40,13 +40,7 @@
 #define OTP_MACRO_PGM_STATUS_REG_OFFSET		0x3c
 #define		PGM_STATUS_IN_PROGRESS_MASK	(1 << 0)
 
-#define PC30XX_OTP_WORD_SIZE			8
-
-/*
- * The number of words in the OTP device. The device is 16K bytes and the word
- * size is 64 bits.
- */
-#define OTP_NUM_WORDS	    (SZ_16K / PC30XX_OTP_WORD_SIZE)
+#define PC30XX_OTP_WORD_SIZE			(8)
 
 struct pc30xx_otp {
 	struct otp_device   *dev;
@@ -96,9 +90,9 @@ static int pc30xx_otp_write_word(struct otp_device *otp_dev,
 	if (~word & v)
 		return -EINVAL;
 
-	/* HW expects byte addresses. */
+	/* Hardware expects address to be specified as 64 bit addresses. */
 	pc30xx_otp_write_reg(otp, OTP_MACRO_PGM_ADDR_REG_OFFSET,
-			     addr * PC30XX_OTP_WORD_SIZE);
+			     addr * PC30XX_OTP_WORD_SIZE * BITS_PER_BYTE);
 
 	v |= word;
 	pc30xx_otp_write_reg(otp, OTP_MACRO_PGM_DATAL_REG_OFFSET,
@@ -126,13 +120,6 @@ static int pc30xx_otp_write_word(struct otp_device *otp_dev,
 #define pc30xx_otp_write_word		NULL
 #endif /* CONFIG_OTP_WRITE_ENABLE */
 
-/*
- * Find out how big the region is. We have a 16KB device which can be split
- * equally into 1, 2, 4 or 8 regions. If a partition is redundant or
- * differential redundancy then this is 2 bits of storage per data bit so half
- * the size. For differential-redundant redundancy, 1 bit of data takes 4 bits
- * of storage so divide by 4.
- */
 static ssize_t pc30xx_otp_region_get_size(struct otp_region *region)
 {
 	return (ssize_t)SZ_16K;
