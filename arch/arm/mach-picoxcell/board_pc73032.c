@@ -16,6 +16,7 @@
 #include <linux/platform_device.h>
 #include <linux/spi/flash.h>
 #include <linux/spi/spi.h>
+#include <linux/phy.h>
 
 #include <mach/hardware.h>
 #include <mach/picoxcell/axi2cfg.h>
@@ -157,6 +158,45 @@ static struct spi_board_info pc73032_spi_board_info[] __initdata = {
 	}
 };
 
+#define KSZ9021RN_UID       (0x00221611)
+#define KSZ9021RN_UID_MASK  (0xFFFFFFF0)
+#define PC30XX_REV_A        (0)
+static int is_link_speed_1000mbps(struct phy_device *phydev)
+{
+	u16 btsr;
+
+	if (!phydev->link)
+                return 0;
+
+	btsr = phy_read(phydev, MII_STAT1000);
+	if (btsr != 0xFFFF && (btsr & (LPA_1000FULL | LPA_1000HALF))){
+                return 1;
+	}
+	return 0;
+}
+
+static void disable_1000mpbs_advertisment(struct phy_device *phydev)
+{
+	u16 btcr;
+
+	btcr = phy_read(phydev, MII_CTRL1000);
+	btcr &= ~(ADVERTISE_1000FULL | ADVERTISE_1000HALF);
+	phy_write(phydev, MII_CTRL1000, btcr);
+}
+
+static int picoxcell_rgmii_fixup(struct phy_device *phydev)
+{
+	unsigned long revision = axi2cfg_readl(AXI2CFG_REVISION_ID_REG_OFFSET);
+
+	if (picoxcell_is_pc30xx() && (revision == PC30XX_REV_A) &&
+            is_link_speed_1000mbps(phydev)) {
+                disable_1000mpbs_advertisment(phydev);
+                genphy_restart_aneg(phydev);
+                printk ("picoxcell rgmii fixup being applied\n");
+	}
+	return 0;
+}
+
 static void __init pc73032_init(void)
 {
 	picoxcell_tsu_init(20000000);
@@ -167,6 +207,8 @@ static void __init pc73032_init(void)
 	pc73032_panic_init();
 	spi_register_board_info(pc73032_spi_board_info,
 				ARRAY_SIZE(pc73032_spi_board_info));
+	phy_register_fixup_for_uid(KSZ9021RN_UID, KSZ9021RN_UID_MASK,
+                                   picoxcell_rgmii_fixup);
 }
 
 MACHINE_START(PC73032, "PC73032")
