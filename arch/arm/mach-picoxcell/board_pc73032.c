@@ -9,11 +9,14 @@
  *
  * All enquiries to support@picochip.com
  */
+#include <linux/clk.h>
+#include <linux/clkdev.h>
 #include <linux/err.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/mtd/partitions.h>
 #include <linux/platform_device.h>
+#include <linux/mtd/physmap.h>
 #include <linux/spi/flash.h>
 #include <linux/spi/spi.h>
 #include <linux/phy.h>
@@ -47,6 +50,67 @@ static void pc73032_panic_init(void)
 			       GPIO_SW_PORT_D_CTL_REG_OFFSET));
 
 	panic_blink = pc73032_panic_blink;
+}
+
+static struct mtd_partition pc73032_nor_partitions[] = {
+	{
+		.name		= "Boot",
+		.size		= SZ_256K,
+		.offset		= 0,
+	},
+	{
+		.name		= "Boot Environment",
+		.size		= SZ_128K,
+		.offset		= MTDPART_OFS_APPEND,
+	},
+	{
+		.name		= "Kernel",
+		.size		= SZ_4M,
+		.offset		= MTDPART_OFS_APPEND,
+	},
+	{
+		.name		= "Application",
+		.size		= MTDPART_SIZ_FULL,
+		.offset		= MTDPART_OFS_APPEND,
+	},
+};
+
+static struct physmap_flash_data pc73032_nor_flash_data = {
+	.width		= 1,
+	.parts		= pc73032_nor_partitions,
+	.nr_parts	= ARRAY_SIZE(pc73032_nor_partitions)
+};
+
+static struct resource pc73032_nor_resource = {
+	.start	= PICOXCELL_FLASH_BASE,
+	.end	= PICOXCELL_FLASH_BASE + SZ_128M - 1,
+	.flags	= IORESOURCE_MEM,
+};
+
+static struct platform_device pc73032_nor = {
+	.name		    = "physmap-flash",
+	.id		    = -1,
+	.dev.platform_data  = &pc73032_nor_flash_data,
+	.resource	    = &pc73032_nor_resource,
+	.num_resources	    = 1,
+};
+
+static void pc73032_init_nor(void)
+{
+	struct clk *ebi_clk = clk_get(NULL, "ebi");
+
+	if (IS_ERR(ebi_clk)) {
+		pr_err("failed to get EBI clk, unable to register NOR flash\n");
+		return;
+	}
+
+	if (clk_enable(ebi_clk)) {
+		pr_err("failed to enable EBI clk, unable to register NOR flash\n");
+		clk_put(ebi_clk);
+		return;
+	}
+
+        platform_device_register(&pc73032_nor);
 }
 
 static struct mtd_partition pc73032_nand_parts[] = {
@@ -203,7 +267,12 @@ static void __init pc73032_init(void)
 	picoxcell_core_init();
 
 	pc73032_register_uarts();
-	pc73032_init_nand();
+
+	if ((axi2cfg_readl(AXI2CFG_SYSCFG_REG_OFFSET) & 0x3) == 0)
+		pc73032_init_nor();
+	else
+		pc73032_init_nand();
+
 	pc73032_panic_init();
 	spi_register_board_info(pc73032_spi_board_info,
 				ARRAY_SIZE(pc73032_spi_board_info));
