@@ -826,9 +826,9 @@ static int read_data_from_flash_mem(struct denali_nand_info *denali,
 static int write_oob_data(struct mtd_info *mtd, uint8_t *buf, int page)
 {
 	struct denali_nand_info *denali = mtd_to_denali(mtd);
-	uint32_t irq_status = 0;
+	uint32_t irq_status = 0, addr = 0x0, cmd = 0x0;
 	uint32_t irq_mask = INTR_STATUS__PROGRAM_COMP |
-						INTR_STATUS__PROGRAM_FAIL;
+			    INTR_STATUS__PROGRAM_FAIL;
 	int status = 0;
 
 	denali->page = page;
@@ -848,6 +848,17 @@ static int write_oob_data(struct mtd_info *mtd, uint8_t *buf, int page)
 		dev_err(denali->dev, "unable to send pipeline command\n");
 		status = -EIO;
 	}
+        
+	/* We set the device back to MAIN_ACCESS here as I observed
+	 * instability with the controller if you do a block erase
+	 * and the last transaction was a SPARE_ACCESS. Block erase
+	 * is reliable (according to the MTD test infrastructure)
+	 * if you are in MAIN_ACCESS.
+	 */
+	addr = BANK (denali->flash_bank) | denali->page;
+	cmd = MODE_10 | addr;
+	index_addr (denali, (uint32_t) cmd, MAIN_ACCESS);
+        
 	return status;
 }
 
@@ -855,9 +866,9 @@ static int write_oob_data(struct mtd_info *mtd, uint8_t *buf, int page)
 static void read_oob_data(struct mtd_info *mtd, uint8_t *buf, int page)
 {
 	struct denali_nand_info *denali = mtd_to_denali(mtd);
-	uint32_t irq_mask = INTR_STATUS__LOAD_COMP,
-			 irq_status = 0, addr = 0x0, cmd = 0x0;
-
+	uint32_t irq_status = 0, addr = 0x0, cmd = 0x0;
+	uint32_t irq_mask = INTR_STATUS__LOAD_COMP;
+			 
 	denali->page = page;
 
 	if (denali_send_pipeline_cmd(denali, false, true, SPARE_ACCESS,
@@ -1533,8 +1544,6 @@ int denali_init(struct denali_nand_info *denali)
 	denali->nand.bbt_td = &bbt_main_descr;
 	denali->nand.bbt_md = &bbt_mirror_descr;
 
-	/* skip the scan for now until we have OOB read and write support */
-	denali->nand.options |= NAND_USE_FLASH_BBT | NAND_SKIP_BBTSCAN;
 	denali->nand.ecc.mode = NAND_ECC_HW_SYNDROME;
 
 	/* Denali Controller only support 15bit and 8bit ECC in MRST,
