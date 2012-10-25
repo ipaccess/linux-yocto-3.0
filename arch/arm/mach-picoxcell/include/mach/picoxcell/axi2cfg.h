@@ -97,6 +97,9 @@
 #define AXI2CFG_AXI_ERR_MASK_NONE		   0
 #define AXI2CFG_AXI_ERR_ENABLE_ALL		   0x00FFFFFF
 
+/* PC30XX Decode Mux stuff */
+#define PC30XX_SPI_DECODE_STEP_SIZE                (8)
+
 #ifndef __ASSEMBLY__
 
 /*
