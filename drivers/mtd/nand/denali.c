@@ -1559,6 +1559,10 @@ int denali_init(struct denali_nand_info *denali)
 	denali->nand.bbt_td = &bbt_main_descr;
 	denali->nand.bbt_md = &bbt_mirror_descr;
 
+	/* make sure we do not allow sub page writes */
+	denali->nand.options |= NAND_NO_SUBPAGE_WRITE;
+
+	/* we do our own hardware ecc */
 	denali->nand.ecc.mode = NAND_ECC_HW_SYNDROME;
 
 	/* Denali Controller only support 15bit and 8bit ECC in MRST,
