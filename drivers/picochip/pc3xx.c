@@ -1277,7 +1277,7 @@ pc3xx_probe( struct platform_device *pdev )
 {
     struct resource *res;
     int ret;
-    struct pc3xx *newdev = kzalloc( sizeof( *newdev ), GFP_KERNEL );
+    struct pc3xx *newdev = kzalloc( sizeof( *newdev ), GFP_ATOMIC );
     struct pc3xx_pdata *pc3xx_dmacs = pdev->dev.platform_data;
 
     if ( !newdev )
@@ -1297,7 +1297,7 @@ pc3xx_probe( struct platform_device *pdev )
     device_init_wakeup( &pdev->dev, 1 );
 
     ret = -ENOMEM;
-    newdev->pa.resources = kmalloc( sizeof( pc3xx_resources ), GFP_KERNEL );
+    newdev->pa.resources = kmalloc( sizeof( pc3xx_resources ), GFP_ATOMIC );
     if ( !newdev->pa.resources )
         goto out_disable_clk;
     memcpy( newdev->pa.resources, pc3xx_resources, sizeof( pc3xx_resources ) );
