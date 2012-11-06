@@ -632,9 +632,6 @@ static irqreturn_t macb_interrupt(int irq, void *dev_id)
 			netdev_err(dev, "DMA bus error: HRESP not OK\n");
 		}
 
-		if (bp->is_gem && (status & GEM_BIT(EXTIRQ)))
-			netdev_info(dev, "woken by magic packet\n");
-
 		status = macb_readl(bp, ISR);
 	}
 
