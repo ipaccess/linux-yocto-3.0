@@ -252,8 +252,7 @@ static int picoxcell_rgmii_fixup(struct phy_device *phydev)
 {
 	unsigned long revision = axi2cfg_readl(AXI2CFG_REVISION_ID_REG_OFFSET);
 
-	if (picoxcell_is_pc30xx() && (revision == PC30XX_REV_A) &&
-            is_link_speed_1000mbps(phydev)) {
+	if (picoxcell_is_pc30xx() && is_link_speed_1000mbps(phydev)) {
                 disable_1000mpbs_advertisment(phydev);
                 genphy_restart_aneg(phydev);
                 printk ("picoxcell rgmii fixup being applied\n");
