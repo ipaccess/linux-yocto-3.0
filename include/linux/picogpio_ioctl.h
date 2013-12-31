@@ -69,4 +69,6 @@ enum picogpio_pin_direction {
 					     picogpio_analogue_config_t)
 #define PICOGPIO_IOCTL_NUM_IOCTL  7
 
+void gpio_free_optional_spinlock(unsigned, bool);
+
 #endif /* !__GPIO_IOCTL_H__ */

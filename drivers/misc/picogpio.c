@@ -55,7 +55,8 @@ struct picogpio_pin {
 static int picogpio_new_pin(struct file *filp, unsigned gpio)
 {
 	int ret;
-	struct picogpio_pin *pin = kmalloc(sizeof(*pin), GFP_KERNEL);
+//	struct picogpio_pin *pin = kmalloc(sizeof(*pin), GFP_KERNEL);
+	struct picogpio_pin *pin = kmalloc(sizeof(*pin), GFP_ATOMIC);
 	struct picogpio_session *session = filp->private_data;
 
 	if (!pin)
@@ -97,7 +98,8 @@ static int picogpio_free_pin(struct file *filp, unsigned gpio)
 		return -EINVAL;
 
 	list_del(&pin->list);
-	gpio_free(pin->gpio);
+//	gpio_free(pin->gpio);
+	gpio_free_optional_spinlock(pin->gpio, true);
 	kfree(pin);
 
 	return 0;
