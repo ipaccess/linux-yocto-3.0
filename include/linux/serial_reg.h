@@ -362,5 +362,12 @@
 #define UART_OMAP_MDR1_CIR_MODE		0x06	/* CIR mode */
 #define UART_OMAP_MDR1_DISABLE		0x07	/* Disable (default state) */
 
+/* 
+ * Extra serial register definitions for the Synopsys UARTs in
+ * picoChip processors.
+ */
+#define PICOXCELL_UART_USR                        0x1f    /* UART Status Register */
+#define PICOXCELL_UART_IIR_ID_MASK                0x0F    /* Interrupt ID mask */
+
 #endif /* _LINUX_SERIAL_REG_H */
 
