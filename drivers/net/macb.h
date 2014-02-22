@@ -540,6 +540,7 @@ struct macb {
 	unsigned int		rx_tail;
 	struct dma_desc		*rx_ring;
 	void			*rx_buffers;
+	struct ring_info	*rx_skb;
 
 	unsigned int		tx_head, tx_tail;
 	struct dma_desc		*tx_ring;

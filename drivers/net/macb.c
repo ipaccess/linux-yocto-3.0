@@ -24,8 +24,8 @@
 #include <linux/phy.h>
 
 #include "macb.h"
-
-#define RX_BUFFER_SIZE		128
+#define MACB_SKB_SIZE		(2*1204)
+#define RX_BUFFER_SIZE		1536
 #define RX_RING_SIZE		512
 #define RX_RING_BYTES		(sizeof(struct dma_desc) * RX_RING_SIZE)
 
@@ -418,14 +418,17 @@ static int macb_rx_frame(struct macb *bp, unsigned int first_frag,
 	unsigned int len;
 	unsigned int frag;
 	unsigned int offset = 0;
-	struct sk_buff *skb;
+	struct sk_buff *skb, *new_skb;
+	dma_addr_t mapping;
 
 	len = MACB_BFEXT(RX_FRMLEN, bp->rx_ring[last_frag].ctrl);
 
 	netdev_dbg(bp->dev, "macb_rx_frame frags %u - %u (len %u)\n",
 		   first_frag, last_frag, len);
 
-	skb = dev_alloc_skb(len + RX_OFFSET);
+	skb = bp->rx_skb[first_frag].skb;
+	dma_unmap_single(&bp->pdev->dev, bp->rx_skb[first_frag].mapping, MACB_SKB_SIZE, 
+			DMA_FROM_DEVICE);
 	if (!skb) {
 		bp->stats.rx_dropped++;
 		for (frag = first_frag; ; frag = NEXT_RX(frag)) {
@@ -452,12 +455,20 @@ static int macb_rx_frame(struct macb *bp, unsigned int first_frag,
 			BUG_ON(frag != last_frag);
 			frag_len = len - offset;
 		}
-		skb_copy_to_linear_data_offset(skb, offset,
-					       (bp->rx_buffers +
-					        (RX_BUFFER_SIZE * frag)),
-					       frag_len);
 		offset += RX_BUFFER_SIZE;
-		bp->rx_ring[frag].addr &= ~MACB_BIT(RX_USED);
+		new_skb = dev_alloc_skb(MACB_SKB_SIZE);
+		if(!new_skb) {
+			netdev_err(bp->dev, "%s skb alloc fail\n", __func__);
+			break;
+		}
+		mapping = dma_map_single(&bp->pdev->dev, new_skb->data,
+				MACB_SKB_SIZE, DMA_FROM_DEVICE);
+		bp->rx_skb[frag].skb = new_skb;
+		bp->rx_skb[frag].mapping = mapping;
+		bp->rx_ring[frag].addr = mapping;
+		bp->rx_ring[frag].ctrl = 0;
+		if (frag == (RX_RING_SIZE-1)) 
+			bp->rx_ring[frag].addr |= MACB_BIT(RX_WRAP);
 		wmb();
 
 		if (frag == last_frag)
@@ -549,7 +560,8 @@ static int macb_poll(struct napi_struct *napi, int budget)
 
 	status = macb_readl(bp, RSR);
 	macb_writel(bp, RSR, status);
-
+	if(status & 0xd)
+		printk("RSR %x\n", status);
 	work_done = 0;
 
 	netdev_dbg(bp->dev, "poll: status = %08lx, budget = %d\n",
@@ -581,7 +593,8 @@ static irqreturn_t macb_interrupt(int irq, void *dev_id)
 
 	if (unlikely(!status))
 		return IRQ_NONE;
-
+	if(status & (MACB_BIT(RXUBR) |MACB_BIT(ISR_ROVR)))
+		printk("%x\n", status);
 	spin_lock(&bp->lock);
 
 	while (status) {
@@ -770,10 +783,27 @@ static int macb_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 static void macb_free_consistent(struct macb *bp)
 {
+	unsigned int i;
+	struct sk_buff *skb;
+
+	for (i = 0; i < RX_RING_SIZE; i++) {
+		skb = bp->rx_skb[i].skb;
+
+		if(skb) {
+			dma_unmap_single(&bp->pdev->dev, bp->rx_skb[i].mapping, 
+					MACB_SKB_SIZE, DMA_FROM_DEVICE);
+			kfree_skb(skb);
+		}
+	}
 	if (bp->tx_skb) {
 		kfree(bp->tx_skb);
 		bp->tx_skb = NULL;
 	}
+	if (bp->rx_skb) {
+		kfree(bp->rx_skb);
+		bp->rx_skb = NULL;
+	}
+
 	if (bp->rx_ring) {
 		dma_free_coherent(&bp->pdev->dev, RX_RING_BYTES,
 				  bp->rx_ring, bp->rx_ring_dma);
@@ -784,12 +814,7 @@ static void macb_free_consistent(struct macb *bp)
 				  bp->tx_ring, bp->tx_ring_dma);
 		bp->tx_ring = NULL;
 	}
-	if (bp->rx_buffers) {
-		dma_free_coherent(&bp->pdev->dev,
-				  RX_RING_SIZE * RX_BUFFER_SIZE,
-				  bp->rx_buffers, bp->rx_buffers_dma);
-		bp->rx_buffers = NULL;
-	}
+
 }
 
 static int macb_alloc_consistent(struct macb *bp)
@@ -800,6 +825,11 @@ static int macb_alloc_consistent(struct macb *bp)
 	bp->tx_skb = kmalloc(size, GFP_KERNEL);
 	if (!bp->tx_skb)
 		goto out_err;
+
+	size = RX_RING_SIZE * sizeof(struct ring_info);
+	bp->rx_skb = kmalloc(size, GFP_KERNEL);
+	if (!bp->rx_skb)
+		goto out_err1;
 
 	size = RX_RING_BYTES;
 	bp->rx_ring = dma_alloc_coherent(&bp->pdev->dev, size,
@@ -819,17 +849,13 @@ static int macb_alloc_consistent(struct macb *bp)
 		   "Allocated TX ring of %d bytes at %08lx (mapped %p)\n",
 		   size, (unsigned long)bp->tx_ring_dma, bp->tx_ring);
 
-	size = RX_RING_SIZE * RX_BUFFER_SIZE;
-	bp->rx_buffers = dma_alloc_coherent(&bp->pdev->dev, size,
-					    &bp->rx_buffers_dma, GFP_KERNEL);
-	if (!bp->rx_buffers)
-		goto out_err;
 	netdev_dbg(bp->dev,
 		   "Allocated RX buffers of %d bytes at %08lx (mapped %p)\n",
 		   size, (unsigned long)bp->rx_buffers_dma, bp->rx_buffers);
 
 	return 0;
-
+out_err1:
+	kfree(bp->tx_skb);
 out_err:
 	macb_free_consistent(bp);
 	return -ENOMEM;
@@ -838,13 +864,21 @@ out_err:
 static void macb_init_rings(struct macb *bp)
 {
 	int i;
-	dma_addr_t addr;
+	dma_addr_t mapping;
+	struct sk_buff *skb;
 
-	addr = bp->rx_buffers_dma;
 	for (i = 0; i < RX_RING_SIZE; i++) {
-		bp->rx_ring[i].addr = addr;
+		skb = dev_alloc_skb(MACB_SKB_SIZE);
+		if(!skb) {
+			netdev_err(bp->dev, "%s skb alloc fail\n", __func__);
+			break;
+		}
+		mapping = dma_map_single(&bp->pdev->dev, skb->data,
+				MACB_SKB_SIZE, DMA_FROM_DEVICE);
+		bp->rx_skb[i].skb = skb;
+		bp->rx_skb[i].mapping = mapping;
+		bp->rx_ring[i].addr = mapping;
 		bp->rx_ring[i].ctrl = 0;
-		addr += RX_BUFFER_SIZE;
 	}
 	bp->rx_ring[RX_RING_SIZE - 1].addr |= MACB_BIT(RX_WRAP);
 
@@ -1188,6 +1222,7 @@ static void macb_init_hw(struct macb *bp)
 	config |= macb_dbw(bp);
 	if (bp->is_gem)
 		config |= GEM_BIT(CSUMEN);
+	config |= MACB_BF(RBOF, 2);
 	macb_writel(bp, NCFGR, config);
 
 	macb_configure_dma(bp);
@@ -1689,7 +1724,7 @@ static int __init macb_probe(struct platform_device *pdev)
 	}
 
 	dev->irq = platform_get_irq(pdev, 0);
-	err = request_irq(dev->irq, macb_interrupt, 0, dev->name, dev);
+	err = request_irq(dev->irq, macb_interrupt, IRQF_DISABLED, dev->name, dev);
 	if (err) {
 		dev_err(&pdev->dev, "Unable to request IRQ %d (error %d)\n",
 			dev->irq, err);
