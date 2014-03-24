@@ -78,7 +78,7 @@
 
 #define MAX_DDT_LEN			16
 
-#define LOCAL_DDT
+//#define LOCAL_DDT
 
 #ifdef LOCAL_DDT
 #define DDT_POOL_SIZE           (SZ_64K * 4)
