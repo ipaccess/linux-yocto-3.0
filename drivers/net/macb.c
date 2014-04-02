@@ -24,7 +24,7 @@
 #include <linux/phy.h>
 
 #include "macb.h"
-#define MACB_SKB_SIZE		(2*1204)
+#define MACB_SKB_SIZE		(2*1024)
 #define RX_BUFFER_SIZE		1536
 #define RX_RING_SIZE		512
 #define RX_RING_BYTES		(sizeof(struct dma_desc) * RX_RING_SIZE)
