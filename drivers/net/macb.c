@@ -304,41 +304,18 @@ static void macb_tx(struct macb *bp)
 	netdev_dbg(bp->dev, "macb_tx status = %02lx\n", (unsigned long)status);
 
 	if (status & (MACB_BIT(UND) | MACB_BIT(TSR_RLE))) {
-		int i;
-		netdev_err(bp->dev, "TX %s, resetting buffers\n",
+		static unsigned int i = 0;
+		netdev_notice(bp->dev, "TX %s, total: %u\n",
 			   status & MACB_BIT(UND) ?
-			   "underrun" : "retry limit exceeded");
+			   "underrun" : "retry limit exceeded",
+                           ++i);
 
-		/* Transfer ongoing, disable transmitter, to avoid confusion */
-		if (status & MACB_BIT(TGO))
-			macb_writel(bp, NCR, macb_readl(bp, NCR) & ~MACB_BIT(TE));
-
-		head = bp->tx_head;
-
-		/*Mark all the buffer as used to avoid sending a lost buffer*/
-		for (i = 0; i < TX_RING_SIZE; i++)
-			bp->tx_ring[i].ctrl = MACB_BIT(TX_USED);
-
-		/* free transmit buffer in upper layer*/
-		for (tail = bp->tx_tail; tail != head; tail = NEXT_TX(tail)) {
-			struct ring_info *rp = &bp->tx_skb[tail];
-			struct sk_buff *skb = rp->skb;
-
-			BUG_ON(skb == NULL);
-
-			rmb();
-
-			dma_unmap_single(&bp->pdev->dev, rp->mapping, skb->len,
-							 DMA_TO_DEVICE);
-			rp->skb = NULL;
-			dev_kfree_skb_irq(skb);
-		}
-
-		bp->tx_head = bp->tx_tail = 0;
-
-		/* Enable the transmitter again */
-		if (status & MACB_BIT(TGO))
-			macb_writel(bp, NCR, macb_readl(bp, NCR) | MACB_BIT(TE));
+        /* No need to control process or do cleanup so orginal code for this
+         * removed, only update statistics if required.
+         * GEMAC sets TX descriptor bit signaling error for the current TX 
+         * frame and continues with the next descriptor.
+         */ 
+ 
 	}
 
 	if (!(status & MACB_BIT(COMP)))
@@ -367,8 +344,12 @@ static void macb_tx(struct macb *bp)
 			   skb->data);
 		dma_unmap_single(&bp->pdev->dev, rp->mapping, skb->len,
 				 DMA_TO_DEVICE);
-		bp->stats.tx_packets++;
-		bp->stats.tx_bytes += skb->len;
+
+                /* Increment stats if no tx error */
+		if (!(bufstat & MACB_BIT(TX_ERROR))) {
+                        bp->stats.tx_packets++;
+		        bp->stats.tx_bytes += skb->len;
+                }
 		rp->skb = NULL;
 		dev_kfree_skb_irq(skb);
 	}
