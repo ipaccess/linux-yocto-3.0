@@ -153,13 +153,13 @@ static struct platform_device ipa267_i2c_bus1_device = {
 };
 
 static struct i2c_board_info __initdata ipa267_i2c_devices[] = {
-	{ I2C_BOARD_INFO("max6635",   0x4B), .bus_num = 0, },
-	{ I2C_BOARD_INFO("atmel_twi", 0x29), .bus_num = 0, },
-	{ I2C_BOARD_INFO("ad7995",    0x28), .bus_num = 0, },
-	{ I2C_BOARD_INFO("micrel",    0x5F), .bus_num = 0, },
-	{ I2C_BOARD_INFO("lm75",      0x48), .bus_num = 0, },
-	{ I2C_BOARD_INFO("at91_i2c",  0x49), .bus_num = 1, },
-	{ I2C_BOARD_INFO("ipa2g",     0x48), .bus_num = 1, }, /* smells funny */
+	{ I2C_BOARD_INFO("max6635",   0x4B), },
+	{ I2C_BOARD_INFO("atmel_twi", 0x29), },
+	{ I2C_BOARD_INFO("ad7995",    0x28), },
+	{ I2C_BOARD_INFO("micrel",    0x5F), },
+	{ I2C_BOARD_INFO("lm75",      0x48), },
+	{ I2C_BOARD_INFO("at91_i2c",  0x49), },
+	{ I2C_BOARD_INFO("ipa2g",     0x48), }, /* smells funny */
 };
 
 static void ipa267_init_nand(void)
