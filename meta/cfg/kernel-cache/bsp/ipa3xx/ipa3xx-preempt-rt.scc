@@ -1,0 +1,8 @@
+define KMACHINE ipa3xx
+define KTYPE preempt-rt
+define KARCH arm
+
+include ktypes/preempt-rt
+branch ipa3xx
+
+include ipa3xx.scc

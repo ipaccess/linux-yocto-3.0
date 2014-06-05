@@ -1,0 +1,4 @@
+kconf hardware picoxcell.cfg
+
+include features/profiling/profiling.scc
+include features/latencytop/latencytop.scc
