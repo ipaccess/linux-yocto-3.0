@@ -119,6 +119,49 @@ static struct platform_device ipa267_nand = {
 	.dev.platform_data  = &ipa267_nand_platdata,
 };
 
+/*
+ * We have two i2c busses, and both are driven using GPIO.
+ */
+static struct i2c_gpio_platform_data ipa267_i2c_bus0_data = {
+	.sda_pin = PC3X3_GPIO_PIN_ARM_7,
+	.scl_pin = PC3X3_GPIO_PIN_ARM_0,
+	.udelay  = 2, /* Between 100kHz and 400kHz, nominally 250kHz */
+	.timeout = 100
+};
+
+static struct platform_device ipa267_i2c_bus0_device = {
+	.name = "i2c-gpio",
+	.id = 0, /* should be 0 as I read the code... */
+	.dev = {
+		.platform_data = &ipa267_i2c_bus0_data,
+	}
+};
+
+static struct i2c_gpio_platform_data ipa267_i2c_bus1_data = {
+	.sda_pin = PC3X3_GPIO_PIN_ARM_44,
+	.scl_pin = PC3X3_GPIO_PIN_ARM_43,
+	.udelay  = 2, /* Between 100kHz and 400kHz, nominally 250kHz */
+	.timeout = 100
+};
+
+static struct platform_device ipa267_i2c_bus1_device = {
+	.name = "i2c-gpio",
+	.id = 1,
+	.dev = {
+		.platform_data = &ipa267_i2c_bus1_data,
+	}
+};
+
+static struct i2c_board_info __initdata ipa267_i2c_devices[] = {
+	{ I2C_BOARD_INFO("max6635",   0x4B), .bus_num = 0, },
+	{ I2C_BOARD_INFO("atmel_twi", 0x29), .bus_num = 0, },
+	{ I2C_BOARD_INFO("ad7995",    0x28), .bus_num = 0, },
+	{ I2C_BOARD_INFO("micrel",    0x5F), .bus_num = 0, },
+	{ I2C_BOARD_INFO("lm75",      0x48), .bus_num = 0, },
+	{ I2C_BOARD_INFO("at91_i2c",  0x49), .bus_num = 1, },
+	{ I2C_BOARD_INFO("ipa2g",     0x48), .bus_num = 1, }, /* smells funny */
+};
+
 static void ipa267_init_nand(void)
 {
 	struct clk *ebi_clk = clk_get(NULL, "ebi");
@@ -194,15 +237,91 @@ static struct flash_platform_data ipa267_spi_flash_data = {
 	.nr_parts		= ARRAY_SIZE(ipa267_spi_flash_partitions),
 };
 
+/*
+ * SPI Board Data for SPI bus 0 (picoxcell-spi)
+ */
 static struct spi_board_info ipa267_spi_board_info[] __initdata = {
 	{
 		.modalias	= "m25p80",
 		.platform_data	= &ipa267_spi_flash_data,
 		.mode		= SPI_MODE_3,
 		.max_speed_hz	= 2000000,
+		.bus_num	= 0,
 		.chip_select	= 0,
 	}
+	/* CS1: EBI: Debug interface */
+	/* CS2: SPI: Reference Clock Control DAC -- dac7512? */
+	/* CS3: SPI: Thermal Sensor -- lm75? */
 };
+
+static struct platform_device *ipa267_devices[] __initdata = {
+        /* &ipa267_nand, -- first sanitise the NAND setup and stop doing duplicate work */
+        &ipa267_i2c_bus0_device,
+        &ipa267_i2c_bus1_device,
+};
+
+/*
+ * TODO: SPI Board Data for SPI bus 1 (Radio SPI, GPIO)
+ *
+ * CS0: ADI/Aux Radio Mux 0
+ * CS1: Aux Radio Mux 1
+ * CS2: Aux Radio Mux 2
+ * CS3: Aux Radio Mux 3
+ */
+
+static void ipa267_mux_gpios(void)
+{
+	int err;
+	const struct mux_cfg brd267_cfg[] = {
+		MUXCFG("arm_gpio16",     MUX_ARM),
+		MUXCFG("arm_gpio17",     MUX_ARM),
+		MUXCFG("arm_gpio18",     MUX_ARM),
+		MUXCFG("arm_gpio19",     MUX_ARM),
+
+		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_tx_data1", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_tx_data2", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_tx_data3", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_tx_data4", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_tx_data5", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_tx_data6", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_tx_data7", MUX_PERIPHERAL_PAI), /* PAI Iface */
+
+		MUXCFG("pai_rx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_rx_data1", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_rx_data2", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_rx_data3", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_rx_data4", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_rx_data5", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_rx_data6", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_rx_data7", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("ebi_addr14",   MUX_ARM),
+		MUXCFG("ebi_addr15",   MUX_ARM),
+		MUXCFG("ebi_addr16",   MUX_ARM),
+		MUXCFG("ebi_addr17",   MUX_ARM),
+		MUXCFG("ebi_addr18",   MUX_ARM),
+		MUXCFG("ebi_addr19",   MUX_ARM),
+		MUXCFG("ebi_addr20",   MUX_ARM),
+		MUXCFG("ebi_addr21",   MUX_ARM),
+		MUXCFG("ebi_addr22",   MUX_ARM),
+		MUXCFG("ebi_addr23",   MUX_ARM),
+		MUXCFG("ebi_addr24",   MUX_ARM),
+		MUXCFG("ebi_addr25",   MUX_ARM),
+		MUXCFG("ebi_addr26",   MUX_ARM),
+
+		MUXCFG("ebi_clk_pin", MUX_ARM),
+		MUXCFG("max_tx_ctrl", MUX_ARM),
+		MUXCFG("max_ref_clk", MUX_ARM),
+		MUXCFG("max_trig_clk", MUX_ARM),
+	};
+
+	err = mux_configure_table(brd267_cfg, ARRAY_SIZE(brd267_cfg));
+
+	if (err) {
+		pr_err("ipa267_mux_gpios: unable to mux gpios\n");
+		return;
+	}
+}
 
 static void __init ipa267_init(void)
 {
@@ -211,7 +330,9 @@ static void __init ipa267_init(void)
 
 	ipa267_register_uarts();
 	ipa267_init_nand();
+	ipa267_mux_gpios();
 	ipa267_panic_init();
+	platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
 	spi_register_board_info(ipa267_spi_board_info,
 				ARRAY_SIZE(ipa267_spi_board_info));
 }
