@@ -237,7 +237,7 @@ static struct mtd_partition ipa267_spi_flash_partitions[] = {
 };
 
 static struct flash_platform_data ipa267_spi_flash_data = {
-	.name			= "ipa267 spi flash",
+	.name			= "spi-flash",
 	.parts			= ipa267_spi_flash_partitions,
 	.nr_parts		= ARRAY_SIZE(ipa267_spi_flash_partitions),
 	.type			= "m25p40",
