@@ -231,6 +231,14 @@
 #define     INTR_STATUS__PIPE_CMD_ERR			0x4000
 #define     INTR_STATUS__PAGE_XFER_INC			0x8000
 
+/*
+ * Some versions of the IP have the ECC fixup handled in hardware.  In this
+ * configuration we only get interrupted when the error is uncorrectable.
+ * Unfortunately this bit replaces INTR_STATUS__ECC_TRANSACTION_DONE from the
+ * old IP.
+ */
+#define     INTR_STATUS__ECC_UNCOR_ERR			0x0001
+
 #define     INTR_EN__ECC_TRANSACTION_DONE		0x0001
 #define     INTR_EN__ECC_ERR				0x0002
 #define     INTR_EN__DMA_CMD_COMP			0x0004
@@ -460,12 +468,14 @@
 struct nand_buf {
 	int head;
 	int tail;
-	uint8_t buf[DENALI_BUF_SIZE];
+__attribute__ ((aligned(64)))   /* required for 8 byte burst from dma */  
+        uint8_t buf[DENALI_BUF_SIZE];
 	dma_addr_t dma_buf;
 };
 
 #define INTEL_CE4100	1
 #define INTEL_MRST	2
+#define MMIO		3
 
 struct denali_nand_info {
 	struct mtd_info mtd;
@@ -477,7 +487,7 @@ struct denali_nand_info {
 	struct device *dev;
 	int total_used_banks;
 	uint32_t block;  /* stored for future use */
-	uint16_t page;
+	uint32_t page;
 	void __iomem *flash_reg;  /* Mapped io reg base address */
 	void __iomem *flash_mem;  /* Mapped io reg base address */
 
@@ -487,6 +497,7 @@ struct denali_nand_info {
 	uint32_t irq_status;
 	int irq_debug_array[32];
 	int idx;
+	int irq;
 
 	uint32_t devnum;	/* represent how many nands connected */
 	uint32_t fwblks; /* represent how many blocks FW used */
@@ -494,6 +505,11 @@ struct denali_nand_info {
 	uint32_t blksperchip;
 	uint32_t bbtskipbytes;
 	uint32_t max_banks;
+	int nr_ecc_bits;
+	bool have_hw_ecc_fixup;
 };
+
+extern int denali_init(struct denali_nand_info *denali);
+extern void denali_remove(struct denali_nand_info *denali);
 
 #endif /*_LLD_NAND_*/

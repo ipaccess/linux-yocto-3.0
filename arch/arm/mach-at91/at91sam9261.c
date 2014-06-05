@@ -71,7 +71,17 @@ static struct clk pioB_clk = {
 };
 static struct clk pioC_clk = {
 	.name		= "pioC_clk",
-	.pmc_mask	= 1 << AT91SAM9261_ID_PIOC,
+	.pmc_mask	= 1 << AT572D940HF_ID_PIOC,
+	.type		= CLK_TYPE_PERIPHERAL,
+};
+static struct clk macb_clk = {
+	.name		= "pclk",
+	.pmc_mask	= 1 << AT572D940HF_ID_EMAC,
+	.type		= CLK_TYPE_PERIPHERAL,
+};
+static struct clk macb_hclk = {
+	.name		= "hclk",
+	.pmc_mask	= 0,
 	.type		= CLK_TYPE_PERIPHERAL,
 };
 static struct clk usart0_clk = {
@@ -159,6 +169,8 @@ static struct clk *periph_clocks[] __initdata = {
 	&pioA_clk,
 	&pioB_clk,
 	&pioC_clk,
+	&macb_clk,
+	&macb_hclk,
 	&usart0_clk,
 	&usart1_clk,
 	&usart2_clk,

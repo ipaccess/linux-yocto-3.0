@@ -441,6 +441,21 @@ config EP93XX_PWM
 	  To compile this driver as a module, choose M here: the module will
 	  be called ep93xx_pwm.
 
+config PICOGPIO
+        tristate "Userspace GPIO interface"
+        ---help---
+          This option enables the picogpio userspace interface. This is a
+	  simple driver that provides an ioctl interface to the kernel GPIO
+	  API and picoChip PC3XX analogue SD-GPIO interface. Saying 'm' here
+	  will build a module called picogpio.
+
+config PC3XX_FRACN
+        tristate "Frac-N Synth driver for picoChip PC3XX"
+        depends on ARCH_PICOXCELL
+        default n
+        help
+          This driver enables a driver for the PC3XX Frac-N synth.
+
 config DS1682
 	tristate "Dallas DS1682 Total Elapsed Time Recorder with Alarm"
 	depends on I2C && EXPERIMENTAL
@@ -526,6 +541,16 @@ config PCH_PHUB
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called pch_phub.
+
+config PICOXCELL_FUSE
+	tristate "Picochip picoXcell fuse driver"
+	depends on ARCH_PICOXCELL
+	help
+	  This driver enables a sysfs and character device interface to access
+	  the efuse block in picoXcell devices.
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called picoxcell_fuse.
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"

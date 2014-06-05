@@ -1,0 +1,39 @@
+# $picoChipHeaderSubst$
+#
+# picoChip device drivers
+#
+
+menu "picoChip Drivers"
+
+config PICOCHIP
+    tristate
+
+config PICOIF
+    tristate "picoIf driver"
+    ---help---
+      This driver provides a kernelspace API for accessing picoArray devices
+      and a userspace interface through /dev/picoif
+
+config PICOIF_PC3XX
+    bool "PC3XX picoIf support"
+    depends on PICOIF && ARCH_PICOXCELL  && DW_DMAC
+    ---help---
+      Selecting yes here enables PC3XX support in picoIf.
+
+config PICOIF_DEFAULT_DEBUG_LEVEL
+    int "Default debugging level for the picoIf driver (0 = quiet, 9 = noisy)"
+    default "1"
+    help
+      This sets the default debug verbosity of the driver at load time. The
+      values for each component may then be ajusted with the *lvl entries in
+      /debug/picoif/.
+
+config PICOIF_DEBUG_TO_CONSOLE
+    bool "Print picoIf debug messages to the console"
+    default false
+    help
+      Enabling this causes picoIf debug messages to be printed to the console
+      in addition to the debug log in /debug/picoconnect/log. This is mainly
+      useful when working on the drivers themselves.
+
+endmenu

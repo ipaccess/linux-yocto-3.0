@@ -1227,7 +1227,8 @@ done:
 }
 EXPORT_SYMBOL_GPL(gpio_request);
 
-void gpio_free(unsigned gpio)
+
+extern void gpio_free_optional_spinlock(unsigned gpio, bool spinlockHeld)
 {
 	unsigned long		flags;
 	struct gpio_desc	*desc;
@@ -1242,16 +1243,19 @@ void gpio_free(unsigned gpio)
 
 	gpio_unexport(gpio);
 
-	spin_lock_irqsave(&gpio_lock, flags);
+        if (!spinlockHeld)
+          spin_lock_irqsave(&gpio_lock, flags);
 
 	desc = &gpio_desc[gpio];
 	chip = desc->chip;
 	if (chip && test_bit(FLAG_REQUESTED, &desc->flags)) {
 		if (chip->free) {
-			spin_unlock_irqrestore(&gpio_lock, flags);
-			might_sleep_if(chip->can_sleep);
+                        if(!spinlockHeld)
+		  	  spin_unlock_irqrestore(&gpio_lock, flags);
+			might_sleep_if(extra_checks && chip->can_sleep);
 			chip->free(chip, gpio - chip->base);
-			spin_lock_irqsave(&gpio_lock, flags);
+                        if(!spinlockHeld)
+			  spin_lock_irqsave(&gpio_lock, flags);
 		}
 		desc_set_label(desc, NULL);
 		module_put(desc->chip->owner);
@@ -1260,9 +1264,18 @@ void gpio_free(unsigned gpio)
 	} else
 		WARN_ON(extra_checks);
 
-	spin_unlock_irqrestore(&gpio_lock, flags);
+        if(!spinlockHeld)
+	  spin_unlock_irqrestore(&gpio_lock, flags);
+}
+EXPORT_SYMBOL_GPL(gpio_free_optional_spinlock);
+
+
+void gpio_free(unsigned gpio)
+{
+        gpio_free_optional_spinlock(gpio, false);
 }
 EXPORT_SYMBOL_GPL(gpio_free);
+
 
 /**
  * gpio_request_one - request a single GPIO with initial configuration

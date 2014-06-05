@@ -1,0 +1,96 @@
+if ARCH_PICOXCELL
+
+config PICOXCELL_TIMER_HZ
+	int "Kernel HZ (jiffies per second)"
+	range 100 1000
+	default 1000
+	help
+	  Select the kernel tick rate here.  Higher numbers mean more timer
+	  interrupts per second when ticks are required but may give lower
+	  latencies.
+
+comment "Picochip SoC device support"
+
+config PICOXCELL_PC3X2
+	bool "Support PC3x2 devices"
+	default y
+	help
+	  Include support for picoChip PC3x2 family of devices. This
+	  includes PC302 and PC312.
+
+config PICOXCELL_PC3X3
+	bool "Support PC3x3 devices"
+	default y
+	help
+	  Include support for picoChip PC3x3 family of devices. This includes
+	  PC313, PC323 and PC333.
+
+config PICOXCELL_PC30XX
+	bool "Support PC30xx devices"
+	default y
+	help
+	  Include support for picoChip PC30xx family of devices.
+
+comment "Picochip picoXcell device configuration"
+
+config PICOXCELL_STOP_WDT_IN_SUSPEND
+	bool "Disable watchdog timer in suspend"
+	depends on PICOXCELL_PC3X3 || PICOXCELL_PC30XX
+	help
+	  Say yes to pause the watchdog timer when in suspend mode on PC3X3
+	  and PC30XX devices.  This will prevent the watchdog from rebooting
+	  the device when suspend is entered.
+
+config PC30XX_HW_NAND
+	bool "Hardware NAND flash support for PC30XX"
+	depends on PICOXCELL_PC30XX
+	help
+	  Say yes here to enable hardware NAND support for PC30XX devices.
+	  The PC30XX devices contain a Denali NAND controller.  You will also
+	  need to enable MTD_NAND_DENALI_MMIO to get the device driver built.
+
+comment "Picochip picoXcell board selection"
+
+config BOARD_PC7302
+	bool "Support PC7302 Board"
+	default y
+	select PICOXCELL_HAVE_TSU
+	depends on PICOXCELL_PC3X2 || PICOXCELL_PC3X3
+	help
+          Include support for the picoChip PC7302 platform. This platform is
+	  can take any of the PC3X2 or PC3X3 devices and includes SPI NOR
+	  flash, parallel NOR flash and NAND flash.
+
+config BOARD_PC7308
+	bool "Support PC7308 Board"
+	default y
+	depends on PICOXCELL_PC30XX
+	select PICOXCELL_HAVE_TSU
+	help
+	  Include support for the Picochip PC7308 platform.  This platform
+	  takes the PC3008 device and includes NAND flash, SPI flash, 10/100
+	  Ethernet and a number of other femtocell peripherals.
+
+config BOARD_PC73032
+	bool "Support PC73032 Board"
+	default y
+	depends on PICOXCELL_PC30XX
+	select PICOXCELL_HAVE_TSU
+	help
+	  Include support for the Picochip PC73032 platform.  This platform
+	  takes the PC3032 device and includes NAND flash, SPI flash, 10/100/1000
+	  Ethernet and a number of other femtocell peripherals.
+
+config PICOXCELL_HAVE_TSU
+	bool
+
+config PICOXCELL_UICC
+	bool "Support for UART based UICC controller"
+	depends on PICOXCELL_PC30XX
+	help
+	  Say Y here to include support for the UART based UICC controller.
+	  This uses a UART along with some GPIO pins to allow userspace to
+	  read/write UICC devices.  The protocol implementation is handled in
+	  userspace.
+
+endif

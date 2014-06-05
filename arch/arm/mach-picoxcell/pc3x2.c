@@ -1,0 +1,269 @@
+/*
+ * Copyright (c) 2010 Picochip Ltd., Jamie Iles
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * All enquiries to support@picochip.com
+ */
+#include <linux/clk.h>
+#include <linux/gpio.h>
+#include <linux/io.h>
+#include <linux/irq.h>
+#include <linux/kernel.h>
+#include <linux/platform_data/macb.h>
+#include <linux/platform_device.h>
+#include <linux/timex.h>
+#include <linux/platform_data/picoxcell_fuse.h>
+
+#include <mach/clkdev.h>
+#include <mach/hardware.h>
+
+#include "mux.h"
+#include "picoxcell_core.h"
+#include "soc.h"
+
+FIXED_CLK(dummy,	CLOCK_TICK_RATE, -1, NULL);
+FIXED_CLK(ref,		20000000, -1, NULL);
+
+static struct clk_lookup pc3x2_clk_lookup[] = {
+	CLK_LOOKUP("picoxcell-spi.0",	NULL,		&dummy_clk),
+	CLK_LOOKUP("dw_dmac.0",		NULL,		&dummy_clk),
+	CLK_LOOKUP("dw_dmac.1",		NULL,		&dummy_clk),
+	CLK_LOOKUP(NULL,		"ebi",		&dummy_clk),
+	CLK_LOOKUP(NULL,		"tzprot_ctrl",	&dummy_clk),
+	CLK_LOOKUP("picoxcell-ipsec",	NULL,		&dummy_clk),
+	CLK_LOOKUP("picoxcell-l2",	NULL,		&dummy_clk),
+	CLK_LOOKUP("picoxcell-fuse",	NULL,		&dummy_clk),
+	CLK_LOOKUP("dw_wdt",		NULL,		&dummy_clk),
+	CLK_LOOKUP("macb",		"pclk",		&dummy_clk),
+	CLK_LOOKUP("macb",		"hclk",		&dummy_clk),
+	CLK_LOOKUP(NULL,		"ref",		&ref_clk),
+	CLK_LOOKUP("dw_apb_timer.0",	NULL,		&dummy_clk),
+	CLK_LOOKUP("dw_apb_timer.1",	NULL,		&dummy_clk),
+	CLK_LOOKUP("picoArray.0",	"axi2pico",	&dummy_clk),
+};
+
+static void __init pc3x2_clk_init(void)
+{
+	picoxcell_clk_add(&dummy_clk);
+	picoxcell_clk_add(&ref_clk);
+	clk_set_parent(&dummy_clk, &ref_clk);
+	clkdev_add_table(pc3x2_clk_lookup, ARRAY_SIZE(pc3x2_clk_lookup));
+}
+
+static struct mux_def pc3x2_mux[] = {
+	/*	Name		ARM	SD	PERIPH	CAEID	CADDR	MASK*/
+	MUXCFGBUS(sdgpio4,	-1,	4,	PAI,	0x8080,	0x9,	0x7),
+	MUXCFGBUS(sdgpio5,	-1,	5,	PAI,	0x8080,	0x9,	0x6),
+	MUXCFGBUS(sdgpio6,	-1,	6,	PAI,	0x8080,	0x9,	0x5),
+	MUXCFGBUS(sdgpio7,	-1,	7,	PAI,	0x8080,	0x9,	0x4),
+
+	MUXCFGBUS(arm4,		4,	-1,	PAI,	0x8080,	0x9,	0xb),
+	MUXCFGBUS(arm5,		5,	-1,	PAI,	0x8080,	0x9,	0xa),
+	MUXCFGBUS(arm6,		6,	-1,	PAI,	0x8080,	0x9,	0x9),
+	MUXCFGBUS(arm7,		7,	-1,	PAI,	0x8080,	0x9,	0x8),
+
+	/*	Name		ARM	SD	PERIPH	REG	BIT	PERREG	PERBIT	FLAGS */
+	MUXGPIO(shared0,	8,	8,	FRACN,	0,	16,	0,	7,	0),
+	MUXGPIO(shared1,	9,	9,	RSVD,	0,	17,	-1,	-1,	0),
+	MUXGPIO(shared2,	10,	10,	RSVD,	0,	18,	-1,	-1,	0),
+	MUXGPIO(shared3,	11,	11,	RSVD,	0,	19,	-1,	-1,	0),
+	MUXGPIO(shared4,	12,	12,	RSVD,	0,	20,	-1,	-1,	0),
+	MUXGPIO(shared5,	13,	13,	RSVD,	0,	21,	-1,	-1,	0),
+	MUXGPIO(shared6,	14,	14,	RSVD,	0,	22,	-1,	-1,	0),
+	MUXGPIO(shared7,	15,	15,	RSVD,	0,	23,	-1,	-1,	0),
+
+	MUXGPIO(sdgpio0,	-1,	0,	FRACN,	-1,	-1,	0,	7,	MUX_INVERT_PERIPH),
+};
+
+static void pc3x2_init(void);
+
+const struct picoxcell_soc pc3x2_soc __initconst = {
+	.init		= pc3x2_init,
+	.init_clocks	= pc3x2_clk_init,
+};
+
+static const char * const pc3x2_sdgpio_lo_pins[] = {
+	"sdgpio0",
+	"sdgpio1",
+	"sdgpio2",
+	"sdgpio3",
+	"sdgpio4",
+	"sdgpio5",
+	"sdgpio6",
+	"sdgpio7",
+};
+
+static const char * const pc3x2_sdgpio_shared_pins[] = {
+	"sdgpio8",
+	"sdgpio9",
+	"sdgpio10",
+	"sdgpio11",
+	"sdgpio12",
+	"sdgpio13",
+	"sdgpio14",
+	"sdgpio15",
+};
+
+static const struct sdgpio_platform_data pc3x2_sdgpio = {
+	.banks				= {
+		{
+			.names		= pc3x2_sdgpio_lo_pins,
+			.block_base	= 0,
+			.gpio_start	= PC3X2_GPIO_PIN_SDGPIO_0,
+			.nr_pins	= ARRAY_SIZE(pc3x2_sdgpio_lo_pins),
+			.label		= "sdpio_lo",
+		},
+		{
+			.names		= pc3x2_sdgpio_shared_pins,
+			.block_base	= 8,
+			.gpio_start	= PC3X2_GPIO_PIN_SDGPIO_8,
+			.nr_pins	= ARRAY_SIZE(pc3x2_sdgpio_shared_pins),
+			.label		= "sdgpio_shared",
+		},
+	},
+	.nr_banks			= 2,
+};
+
+static const char *const pc3x2_porta_names[] = {
+	"arm0",
+	"arm1",
+	"arm2",
+	"arm3",
+	"arm4",
+	"arm5",
+	"arm6",
+	"arm7",
+};
+
+static const char *const pc3x2_portb_names[] = {
+	"arm8",
+	"arm9",
+	"arm10",
+	"arm11",
+	"arm12",
+	"arm13",
+	"arm14",
+	"arm15",
+};
+
+static void pc3x2_add_gpio(void)
+{
+	picoxcell_add_gpio_port(0, 8, PC3X2_GPIO_PIN_ARM_0,
+				pc3x2_porta_names);
+	picoxcell_add_gpio_port(1, 8, PC3X2_GPIO_PIN_ARM_8,
+				pc3x2_portb_names);
+	platform_device_register_data(NULL, "sdgpio", -1, &pc3x2_sdgpio,
+		sizeof(pc3x2_sdgpio));
+}
+
+static struct picoxcell_fuse_map pc3x2_fuse_map = {
+	.nr_fuses	= 4096,
+	.ltp_fuse	= 994,
+	.ranges		= {
+		FUSE_RANGE_PROTECTED(secure_bootstrap, 0, 127, 928, 938, 948),
+		FUSE_RANGE_PROTECTED(counter_iv, 128, 255, 929, 939, 949),
+		FUSE_RANGE_PROTECTED(key2, 256, 383, 930, 940, 950),
+		FUSE_RANGE_PROTECTED(key3, 384, 511, 931, 941, 951),
+		FUSE_RANGE_PROTECTED(key4, 512, 639, 932, 942, 952),
+		FUSE_RANGE_PROTECTED(key5, 640, 767, 933, 943, 953),
+		FUSE_RANGE_PROTECTED(die_ident, 768, 895, 934, 944, 954),
+		FUSE_RANGE_PROTECTED(partition1, 1024, 2047, 935, 945, 955),
+		FUSE_RANGE_PROTECTED(partition2, 2048, 3071, 936, 946, 956),
+		FUSE_RANGE_PROTECTED(partition3, 3072, 4095, 937, 947, 957),
+		FUSE_RANGE(secure_boot, 992, 992),
+		FUSE_RANGE(disable_tz, 993, 993),
+		FUSE_RANGE(global_ltp, 994, 994),
+		FUSE_RANGE(disable_debug, 995, 995),
+		FUSE_RANGE(disable_isc, 996, 996),
+		FUSE_RANGE(disable_jtag, 997, 997),
+		FUSE_RANGE(disable_invasive_debug, 998, 998),
+		FUSE_RANGE(disable_noninvasive_debug, 999, 999),
+		FUSE_RANGE(disable_cp15, 1000, 1000),
+		FUSE_RANGE(disable_memif_arm, 1001, 1001),
+		FUSE_RANGE(disable_nonsecure_parallel_flash, 1002, 1002),
+		FUSE_RANGE_NULL,
+	},
+};
+
+static void pc3x2_add_fuse(void)
+{
+	picoxcell_add_fuse(&pc3x2_fuse_map);
+}
+
+static void pc3x2_init_bus_snoopers(void)
+{
+	static const char *pc3x2_snoop_err_names[32] = {
+		[0]	= "dmac1_channel0 (read)",
+		[1]	= "dmac1_channel1 (read)",
+		[2]	= "dmac1_channel2 (read)",
+		[3]	= "dmac1_channel3 (read)",
+		[4]	= "dmac2_channel0 (read)",
+		[5]	= "dmac2_channel1 (read)",
+		[6]	= "dmac2_channel2 (read)",
+		[7]	= "dmac2_channel3 (read)",
+		[8]	= "emac (read)",
+		[9]	= "cipher (read)",
+		[10]	= "srtp (read)",
+		[11]	= "ipsec (read)",
+		[12]	= "dmac1_channel0 (write)",
+		[13]	= "dmac1_channel1 (write)",
+		[14]	= "dmac1_channel2 (write)",
+		[15]	= "dmac1_channel3 (write)",
+		[16]	= "dmac2_channel0 (write)",
+		[17]	= "dmac2_channel1 (write)",
+		[18]	= "dmac2_channel2 (write)",
+		[19]	= "dmac2_channel3 (write)",
+		[20]	= "emac (write)",
+		[21]	= "cipher (write)",
+		[22]	= "srtp (write)",
+		[23]	= "ipsec (write)",
+	};
+
+	static struct resource irqs[] = {
+		{
+			.start	= IRQ_AXI_RD_ERR,
+			.end	= IRQ_AXI_RD_ERR,
+			.flags	= IORESOURCE_IRQ,
+		},
+		{
+			.start	= IRQ_AXI_WR_ERR,
+			.end	= IRQ_AXI_WR_ERR,
+			.flags	= IORESOURCE_IRQ,
+		},
+	};
+
+	platform_device_register_resndata(NULL, "picoxcell-bus-error", -1,
+					  irqs, ARRAY_SIZE(irqs),
+					  pc3x2_snoop_err_names,
+					  sizeof(pc3x2_snoop_err_names));
+}
+
+static void pc3x2_add_spaccs(void)
+{
+	picoxcell_add_spacc("picoxcell-ipsec", PICOXCELL_IPSEC_BASE,
+			    IRQ_IPSEC, -1);
+	picoxcell_add_spacc("picoxcell-l2", PICOXCELL_CIPHER_BASE,
+			    IRQ_AES, -1);
+}
+
+static void pc3x2_add_emac(void)
+{
+	picoxcell_add_emac(PICOXCELL_EMAC_BASE, IRQ_EMAC,
+			   MACB_QUIRK_NO_UNALIGNED_TX |
+			   MACB_QUIRK_FORCE_DBW64 |
+			   MACB_QUIRK_HAVE_TSU |
+			   MACB_QUIRK_HAVE_TSU_CLK);
+}
+
+static void __init pc3x2_init(void)
+{
+	picoxcell_mux_register(pc3x2_mux, ARRAY_SIZE(pc3x2_mux));
+	pc3x2_add_gpio();
+	pc3x2_init_bus_snoopers();
+	pc3x2_add_spaccs();
+	pc3x2_add_fuse();
+	pc3x2_add_emac();
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011 Picochip Ltd., Jamie Iles
+ * Copyright (c) 2010-2012 Picochip Ltd., Jamie Iles
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/pm.h>
 #include <linux/rtnetlink.h>
 #include <linux/scatterlist.h>
@@ -64,6 +65,7 @@
 #define SPACC_CRYPTO_ALG_PRIORITY	10000
 
 #define SPACC_CRYPTO_KASUMI_F8_KEY_LEN	16
+#define SPACC_CRYPTO_SNOW3G_KEY_LEN	16
 #define SPACC_CRYPTO_IPSEC_CIPHER_PG_SZ 64
 #define SPACC_CRYPTO_IPSEC_HASH_PG_SZ	64
 #define SPACC_CRYPTO_IPSEC_MAX_CTXS	32
@@ -105,7 +107,20 @@ struct spacc_req {
 };
 
 struct spacc_engine {
+	int				version;
 	void __iomem			*regs;
+
+	/*
+	 * These location of these registers depends on the SPAcc version so
+	 * rather than runtime evaluation we cache the addresses here and use
+	 * the pointers.
+	 */
+	void __iomem			*proc_len;
+	void __iomem			*icv_len;
+	void __iomem			*icv_offs;
+	void __iomem			*ctrl;
+	void __iomem			*aux_info;
+
 	struct list_head		pending;
 	int				next_ctx;
 	spinlock_t			hw_lock;
@@ -648,11 +663,11 @@ static int spacc_aead_submit(struct spacc_req *req)
 	if (!req->is_encrypt)
 		proc_len -= ctx->auth_size;
 
-	writel(proc_len, engine->regs + SPA_PROC_LEN_REG_OFFSET);
+	writel(proc_len, engine->proc_len);
 	writel(assoc_len, engine->regs + SPA_AAD_LEN_REG_OFFSET);
-	writel(ctx->auth_size, engine->regs + SPA_ICV_LEN_REG_OFFSET);
-	writel(0, engine->regs + SPA_ICV_OFFSET_REG_OFFSET);
-	writel(0, engine->regs + SPA_AUX_INFO_REG_OFFSET);
+	writel(ctx->auth_size, engine->icv_len);
+	writel(0, engine->icv_offs);
+	writel(0, engine->aux_info);
 
 	ctrl = spacc_alg->ctrl_default | (req->ctx_id << SPA_CTRL_CTX_IDX) |
 		(1 << SPA_CTRL_ICV_APPEND);
@@ -663,7 +678,7 @@ static int spacc_aead_submit(struct spacc_req *req)
 
 	mod_timer(&engine->packet_timeout, jiffies + PACKET_TIMEOUT);
 
-	writel(ctrl, engine->regs + SPA_CTRL_REG_OFFSET);
+	writel(ctrl, engine->ctrl);
 
 	return -EINPROGRESS;
 }
@@ -807,6 +822,8 @@ static int spacc_aead_cra_init(struct crypto_tfm *tfm)
 
 	tfm->crt_aead.reqsize = sizeof(struct spacc_req);
 
+	pm_runtime_get_sync(engine->dev);
+
 	return 0;
 }
 
@@ -817,10 +834,13 @@ static int spacc_aead_cra_init(struct crypto_tfm *tfm)
 static void spacc_aead_cra_exit(struct crypto_tfm *tfm)
 {
 	struct spacc_aead_ctx *ctx = crypto_tfm_ctx(tfm);
+	struct spacc_engine *engine = ctx->generic.engine;
 
 	if (ctx->sw_cipher)
 		crypto_free_aead(ctx->sw_cipher);
 	ctx->sw_cipher = NULL;
+
+	pm_runtime_put_sync(engine->dev);
 }
 
 /*
@@ -902,8 +922,8 @@ sw_setkey_failed:
 	return err;
 }
 
-static int spacc_kasumi_f8_setkey(struct crypto_ablkcipher *cipher,
-				  const u8 *key, unsigned int len)
+static int spacc_l2_setkey(struct crypto_ablkcipher *cipher, const u8 *key,
+			   unsigned int len)
 {
 	struct crypto_tfm *tfm = crypto_ablkcipher_tfm(cipher);
 	struct spacc_ablk_ctx *ctx = crypto_tfm_ctx(tfm);
@@ -972,9 +992,9 @@ static int spacc_ablk_submit(struct spacc_req *req)
 	writel(req->dst_addr, engine->regs + SPA_DST_PTR_REG_OFFSET);
 	writel(0, engine->regs + SPA_OFFSET_REG_OFFSET);
 
-	writel(ablk_req->nbytes, engine->regs + SPA_PROC_LEN_REG_OFFSET);
-	writel(0, engine->regs + SPA_ICV_OFFSET_REG_OFFSET);
-	writel(0, engine->regs + SPA_AUX_INFO_REG_OFFSET);
+	writel(ablk_req->nbytes, engine->proc_len);
+	writel(0, engine->icv_offs);
+	writel(0, engine->aux_info);
 	writel(0, engine->regs + SPA_AAD_LEN_REG_OFFSET);
 
 	ctrl = spacc_alg->ctrl_default | (req->ctx_id << SPA_CTRL_CTX_IDX) |
@@ -983,7 +1003,7 @@ static int spacc_ablk_submit(struct spacc_req *req)
 
 	mod_timer(&engine->packet_timeout, jiffies + PACKET_TIMEOUT);
 
-	writel(ctrl, engine->regs + SPA_CTRL_REG_OFFSET);
+	writel(ctrl, engine->ctrl);
 
 	return -EINPROGRESS;
 }
@@ -1112,16 +1132,21 @@ static int spacc_ablk_cra_init(struct crypto_tfm *tfm)
 
 	tfm->crt_ablkcipher.reqsize = sizeof(struct spacc_req);
 
+	pm_runtime_get_sync(engine->dev);
+
 	return 0;
 }
 
 static void spacc_ablk_cra_exit(struct crypto_tfm *tfm)
 {
 	struct spacc_ablk_ctx *ctx = crypto_tfm_ctx(tfm);
+	struct spacc_engine *engine = ctx->generic.engine;
 
 	if (ctx->sw_cipher)
 		crypto_free_ablkcipher(ctx->sw_cipher);
 	ctx->sw_cipher = NULL;
+
+	pm_runtime_put_sync(engine->dev);
 }
 
 static int spacc_ablk_encrypt(struct ablkcipher_request *req)
@@ -1211,7 +1236,8 @@ static void spacc_packet_timeout(unsigned long data)
 {
 	struct spacc_engine *engine = (struct spacc_engine *)data;
 
-	spacc_process_done(engine);
+	if (!pm_runtime_suspended(engine->dev))
+		spacc_process_done(engine);
 }
 
 static int spacc_req_submit(struct spacc_req *req)
@@ -1241,12 +1267,11 @@ static void spacc_spacc_complete(unsigned long data)
 	spin_unlock_irqrestore(&engine->hw_lock, flags);
 
 	list_for_each_entry_safe(req, tmp, &completed, list) {
-		req->complete(req);
 		list_del(&req->list);
+		req->complete(req);
 	}
 }
 
-#ifdef CONFIG_PM
 static int spacc_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -1271,10 +1296,11 @@ static int spacc_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops spacc_pm_ops = {
-	.suspend	= spacc_suspend,
-	.resume		= spacc_resume,
+	.suspend		= spacc_suspend,
+	.resume			= spacc_resume,
+	.runtime_suspend	= spacc_suspend,
+	.runtime_resume		= spacc_resume,
 };
-#endif /* CONFIG_PM */
 
 static inline struct spacc_engine *spacc_dev_to_engine(struct device *dev)
 {
@@ -1644,7 +1670,7 @@ static struct spacc_alg l2_engine_algs[] = {
 			.cra_type = &crypto_ablkcipher_type,
 			.cra_module = THIS_MODULE,
 			.cra_ablkcipher = {
-				.setkey = spacc_kasumi_f8_setkey,
+				.setkey = spacc_l2_setkey,
 				.encrypt = spacc_ablk_encrypt,
 				.decrypt = spacc_ablk_decrypt,
 				.min_keysize = 16,
@@ -1657,24 +1683,97 @@ static struct spacc_alg l2_engine_algs[] = {
 	},
 };
 
-static int __devinit spacc_probe(struct platform_device *pdev,
-				 unsigned max_ctxs, size_t cipher_pg_sz,
-				 size_t hash_pg_sz, size_t fifo_sz,
-				 struct spacc_alg *algs, size_t num_algs)
+static struct spacc_alg l2_engine_algs_v2[] = {
+	{
+		.key_offs = 0,
+		.iv_offs = SPACC_CRYPTO_KASUMI_F8_KEY_LEN,
+		.ctrl_default = SPA_CTRL_CIPH_ALG_KASUMI |
+				SPA_CTRL_CIPH_MODE_F8,
+		.alg = {
+			.cra_name = "f8(kasumi)",
+			.cra_driver_name = "f8-kasumi-picoxcell",
+			.cra_priority = SPACC_CRYPTO_ALG_PRIORITY,
+			.cra_flags = CRYPTO_ALG_TYPE_GIVCIPHER | CRYPTO_ALG_ASYNC,
+			.cra_blocksize = 8,
+			.cra_ctxsize = sizeof(struct spacc_ablk_ctx),
+			.cra_type = &crypto_ablkcipher_type,
+			.cra_module = THIS_MODULE,
+			.cra_ablkcipher = {
+				.setkey = spacc_l2_setkey,
+				.encrypt = spacc_ablk_encrypt,
+				.decrypt = spacc_ablk_decrypt,
+				.min_keysize = 16,
+				.max_keysize = 16,
+				.ivsize = 8,
+			},
+			.cra_init = spacc_ablk_cra_init,
+			.cra_exit = spacc_ablk_cra_exit,
+		},
+	},
+	{
+		.key_offs = 0,
+		.iv_offs = SPACC_CRYPTO_SNOW3G_KEY_LEN,
+		.ctrl_default = SPA_CTRL_CIPH_ALG_SNOW3G,
+		.alg = {
+			.cra_name = "snow3g",
+			.cra_driver_name = "snow3g-picoxcell",
+			.cra_priority = SPACC_CRYPTO_ALG_PRIORITY,
+			.cra_flags = CRYPTO_ALG_TYPE_GIVCIPHER | CRYPTO_ALG_ASYNC,
+			.cra_blocksize = 8,
+			.cra_ctxsize = sizeof(struct spacc_ablk_ctx),
+			.cra_type = &crypto_ablkcipher_type,
+			.cra_module = THIS_MODULE,
+			.cra_ablkcipher = {
+				.setkey = spacc_l2_setkey,
+				.encrypt = spacc_ablk_encrypt,
+				.decrypt = spacc_ablk_decrypt,
+				.min_keysize = 16,
+				.max_keysize = 16,
+				.ivsize = 16,
+			},
+			.cra_init = spacc_ablk_cra_init,
+			.cra_exit = spacc_ablk_cra_exit,
+		},
+	},
+};
+
+static int __devinit spacc_probe(struct platform_device *pdev)
 {
 	int i, err, ret = -EINVAL;
 	struct resource *mem, *irq;
+	const struct platform_device_id *platid = platform_get_device_id(pdev);
 	struct spacc_engine *engine = devm_kzalloc(&pdev->dev, sizeof(*engine),
 						   GFP_KERNEL);
 	if (!engine)
 		return -ENOMEM;
 
-	engine->max_ctxs	= max_ctxs;
-	engine->cipher_pg_sz	= cipher_pg_sz;
-	engine->hash_pg_sz	= hash_pg_sz;
-	engine->fifo_sz		= fifo_sz;
-	engine->algs		= algs;
-	engine->num_algs	= num_algs;
+	if (!strcmp(platid->name, "picoxcell-ipsec") ||
+	    !strcmp(platid->name, "picoxcell-ipsec-v2")) {
+		engine->max_ctxs	= SPACC_CRYPTO_IPSEC_MAX_CTXS;
+		engine->cipher_pg_sz	= SPACC_CRYPTO_IPSEC_CIPHER_PG_SZ;
+		engine->hash_pg_sz	= SPACC_CRYPTO_IPSEC_HASH_PG_SZ;
+		engine->fifo_sz		= SPACC_CRYPTO_IPSEC_FIFO_SZ;
+		engine->algs		= ipsec_engine_algs;
+		engine->num_algs	= ARRAY_SIZE(ipsec_engine_algs);
+	} else if (!strcmp(platid->name, "picoxcell-l2")) {
+		engine->max_ctxs	= SPACC_CRYPTO_L2_MAX_CTXS;
+		engine->cipher_pg_sz	= SPACC_CRYPTO_L2_CIPHER_PG_SZ;
+		engine->hash_pg_sz	= SPACC_CRYPTO_L2_HASH_PG_SZ;
+		engine->fifo_sz		= SPACC_CRYPTO_L2_FIFO_SZ;
+		engine->algs		= l2_engine_algs;
+		engine->num_algs	= ARRAY_SIZE(l2_engine_algs);
+	} else if (!strcmp(platid->name, "picoxcell-l2-v2")) {
+		engine->max_ctxs	= SPACC_CRYPTO_L2_MAX_CTXS;
+		engine->cipher_pg_sz	= SPACC_CRYPTO_L2_CIPHER_PG_SZ;
+		engine->hash_pg_sz	= SPACC_CRYPTO_L2_HASH_PG_SZ;
+		engine->fifo_sz		= SPACC_CRYPTO_L2_FIFO_SZ;
+		engine->algs		= l2_engine_algs_v2;
+		engine->num_algs	= ARRAY_SIZE(l2_engine_algs_v2);
+	} else {
+		return -EINVAL;
+	}
+
+	engine->version		= strstr(platid->name, "v2") ? 2 : 1;
 	engine->name		= dev_name(&pdev->dev);
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1693,6 +1792,17 @@ static int __devinit spacc_probe(struct platform_device *pdev,
 		dev_err(&pdev->dev, "memory map failed\n");
 		return -ENOMEM;
 	}
+
+	engine->proc_len	= engine->regs +
+				  SPA_PROC_LEN_REG_OFFSET(engine->version);
+	engine->icv_len		= engine->regs +
+				  SPA_ICV_LEN_REG_OFFSET(engine->version);
+	engine->icv_offs	= engine->regs +
+				  SPA_ICV_OFFSET_REG_OFFSET(engine->version);
+	engine->ctrl		= engine->regs +
+				  SPA_CTRL_REG_OFFSET(engine->version);
+	engine->aux_info	= engine->regs +
+				  SPA_AUX_INFO_REG_OFFSET(engine->version);
 
 	if (devm_request_irq(&pdev->dev, irq->start, spacc_spacc_irq, 0,
 			     engine->name, engine)) {
@@ -1718,11 +1828,10 @@ static int __devinit spacc_probe(struct platform_device *pdev,
 		return PTR_ERR(engine->clk);
 	}
 
-	if (clk_enable(engine->clk)) {
-		dev_info(&pdev->dev, "unable to enable clk\n");
-		clk_put(engine->clk);
-		return -EIO;
-	}
+	platform_set_drvdata(pdev, engine);
+	pm_runtime_irq_safe(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_resume(&pdev->dev);
 
 	err = device_create_file(&pdev->dev, &dev_attr_stat_irq_thresh);
 	if (err) {
@@ -1730,7 +1839,6 @@ static int __devinit spacc_probe(struct platform_device *pdev,
 		clk_put(engine->clk);
 		return err;
 	}
-
 
 	/*
 	 * Use an IRQ threshold of 50% as a default. This seems to be a
@@ -1759,8 +1867,6 @@ static int __devinit spacc_probe(struct platform_device *pdev,
 	tasklet_init(&engine->complete, spacc_spacc_complete,
 		     (unsigned long)engine);
 
-	platform_set_drvdata(pdev, engine);
-
 	INIT_LIST_HEAD(&engine->registered_algs);
 	for (i = 0; i < engine->num_algs; ++i) {
 		engine->algs[i].engine = engine;
@@ -1778,6 +1884,8 @@ static int __devinit spacc_probe(struct platform_device *pdev,
 				engine->algs[i].alg.cra_name);
 	}
 
+	pm_runtime_suspend(&pdev->dev);
+
 	return ret;
 }
 
@@ -1794,78 +1902,40 @@ static int __devexit spacc_remove(struct platform_device *pdev)
 		crypto_unregister_alg(&alg->alg);
 	}
 
-	clk_disable(engine->clk);
+	pm_runtime_disable(&pdev->dev);
+
 	clk_put(engine->clk);
 
 	return 0;
 }
 
-static int __devinit ipsec_probe(struct platform_device *pdev)
-{
-	return spacc_probe(pdev, SPACC_CRYPTO_IPSEC_MAX_CTXS,
-			   SPACC_CRYPTO_IPSEC_CIPHER_PG_SZ,
-			   SPACC_CRYPTO_IPSEC_HASH_PG_SZ,
-			   SPACC_CRYPTO_IPSEC_FIFO_SZ, ipsec_engine_algs,
-			   ARRAY_SIZE(ipsec_engine_algs));
-}
+static const struct platform_device_id spacc_id_table[] = {
+	{ "picoxcell-ipsec", },
+	{ "picoxcell-ipsec-v2", },
+	{ "picoxcell-l2", },
+	{ "picoxcell-l2-v2", },
+	{},
+};
 
-static struct platform_driver ipsec_driver = {
-	.probe		= ipsec_probe,
+static struct platform_driver spacc_driver = {
+	.probe		= spacc_probe,
 	.remove		= __devexit_p(spacc_remove),
 	.driver		= {
 		.name	= "picoxcell-ipsec",
-#ifdef CONFIG_PM
 		.pm	= &spacc_pm_ops,
-#endif /* CONFIG_PM */
 	},
-};
-
-static int __devinit l2_probe(struct platform_device *pdev)
-{
-	return spacc_probe(pdev, SPACC_CRYPTO_L2_MAX_CTXS,
-			   SPACC_CRYPTO_L2_CIPHER_PG_SZ,
-			   SPACC_CRYPTO_L2_HASH_PG_SZ, SPACC_CRYPTO_L2_FIFO_SZ,
-			   l2_engine_algs, ARRAY_SIZE(l2_engine_algs));
-}
-
-static struct platform_driver l2_driver = {
-	.probe		= l2_probe,
-	.remove		= __devexit_p(spacc_remove),
-	.driver		= {
-		.name	= "picoxcell-l2",
-#ifdef CONFIG_PM
-		.pm	= &spacc_pm_ops,
-#endif /* CONFIG_PM */
-	},
+	.id_table	= spacc_id_table,
 };
 
 static int __init spacc_init(void)
 {
-	int ret = platform_driver_register(&ipsec_driver);
-	if (ret) {
-		pr_err("failed to register ipsec spacc driver");
-		goto out;
-	}
-
-	ret = platform_driver_register(&l2_driver);
-	if (ret) {
-		pr_err("failed to register l2 spacc driver");
-		goto l2_failed;
-	}
-
-	return 0;
-
-l2_failed:
-	platform_driver_unregister(&ipsec_driver);
-out:
-	return ret;
+	return platform_driver_register(&spacc_driver);
 }
 module_init(spacc_init);
 
 static void __exit spacc_exit(void)
 {
-	platform_driver_unregister(&ipsec_driver);
-	platform_driver_unregister(&l2_driver);
+	platform_driver_unregister(&spacc_driver);
 }
 module_exit(spacc_exit);
 
