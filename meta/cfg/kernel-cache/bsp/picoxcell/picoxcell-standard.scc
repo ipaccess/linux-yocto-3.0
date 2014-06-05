@@ -2,6 +2,7 @@ define KMACHINE picoxcell
 define KTYPE standard
 define KARCH arm
 
-# no new branch required, re-use the ktypes/standard branch
 include ktypes/standard
+branch picoxcell
+
 include picoxcell.scc
