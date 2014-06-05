@@ -93,4 +93,14 @@ config PICOXCELL_UICC
 	  read/write UICC devices.  The protocol implementation is handled in
 	  userspace.
 
+comment "Picochip picoXcell board selection"
+
+config BOARD_IPA267
+	bool "Support IPA267 Board"
+	default y
+	select PICOXCELL_HAVE_TSU
+	depends on PICOXCELL_PC3X2 || PICOXCELL_PC3X3
+	help
+          Include support for the ip.access 267 board.
+
 endif
