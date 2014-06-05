@@ -1,4 +1,4 @@
-kconf hardware picoxcell.cfg
+kconf hardware ipa3xx.cfg
 
 include features/profiling/profiling.scc
 include features/latencytop/latencytop.scc
