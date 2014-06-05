@@ -1,9 +1,22 @@
+################################################################################
+# 
+# Copyright (c) 2009 ip.access Ltd.
+#
+#  This program is free software; you can redistribute  it and/or modify it
+#  under  the terms of  the GNU General  Public License as published by the
+#  Free Software Foundation;  either version 2 of the  License, or (at your
+#  option) any later version.
+#
+# 
 #
 # Makefile for the Linux kernel device drivers.
 #
 # 15 Sep 2000, Christoph Hellwig <hch@infradead.org>
 # Rewritten to use lists instead of if-statements.
 #
+##############################################################################
+# Filename: 
+##############################################################################
 
 obj-y				+= gpio/
 obj-$(CONFIG_PCI)		+= pci/
@@ -124,3 +137,4 @@ obj-y				+= clk/
 
 obj-$(CONFIG_HWSPINLOCK)	+= hwspinlock/
 obj-$(CONFIG_OTP)		+= otp/
+obj-$(CONFIG_IPACCESS)  += ipa/

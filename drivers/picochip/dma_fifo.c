@@ -54,6 +54,45 @@ static struct dma_buf_cache dma_buf_cache = {
 };
 
 void
+dma_buf_cache_init( void )
+{
+//FIX THIS NA1
+#if 0 
+    int            i;  
+    unsigned long  flags;
+
+    spin_lock_irqsave( &dma_buf_cache.lock, flags );
+
+    for ( i = 0; i < DMA_BUF_CACHE_NR_LINES; ++i )
+    {   
+        if ( !test_bit( i, &dma_buf_cache.present ) ) 
+        {   
+            struct dma_buf_cache_line  *line;
+            void                       *virt;
+            dma_addr_t                  phys;
+            size_t                      len = 65536;
+    
+            virt = dma_alloc_coherent( NULL, len, &phys, GFP_ATOMIC );///NA1 CHECK THIS
+            if ( virt )
+            {   
+                line = &dma_buf_cache.lines[ i ];
+    
+                line->virt = virt;
+                line->phys = phys;
+                line->len = len;
+    
+                clear_bit( i, &dma_buf_cache.in_use );
+                set_bit( i, &dma_buf_cache.present );
+            }   
+        }   
+    }   
+    
+    spin_unlock_irqrestore( &dma_buf_cache.lock, flags );
+#endif
+}
+
+
+void
 dma_buf_cache_exit( void )
 {
     int i;

@@ -27,6 +27,12 @@
 #include "picoif_internal.h"
 
 /*!
+ * Preload the DMA buffer cache at module entry.
+ */
+void
+dma_buf_cache_init( void );
+
+/*!
  * Cleanup the DMA buffer cache at module exit.
  */
 void

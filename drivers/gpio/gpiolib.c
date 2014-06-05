@@ -1633,6 +1633,48 @@ int __gpio_to_irq(unsigned gpio)
 }
 EXPORT_SYMBOL_GPL(__gpio_to_irq);
 
+ /**
+ * __gpio_get_direction() - return a gpio's direction
+ * @gpio: gpio whose direction will be returned
+ * Context: any
+ *
+ * This is used directly or indirectly to implement gpio_get_direction().
+ * It returns the zero or nonzero value provided by the associated
+ * gpio_chip.get_direction() method; or zero if no such method is provided.
+ */
+int __gpio_get_direction(unsigned gpio)
+{
+	struct gpio_chip	*chip;
+
+	chip = gpio_to_chip(gpio);
+	WARN_ON(extra_checks && chip->can_sleep);
+	return chip->get_direction ? chip->get_direction(chip, gpio - chip->base) : 0;
+}
+EXPORT_SYMBOL_GPL(__gpio_get_direction);
+
+/**
+ * __gpio_set_mux() - assign mux state of a gpio
+ * @gpio: gpio whose mux state will be assigned
+ * @value: mux state to assign
+ * Context: any
+ *
+ * This is used directly or indirectly to implement gpio_set_mux().
+ * It invokes the associated gpio_chip.set_mux() method.
+ */
+void __gpio_set_mux(unsigned gpio, int value)
+{
+	struct gpio_chip	*chip;
+
+	chip = gpio_to_chip(gpio);
+	if (!chip) {
+		printk("__gpio_set_mux(%d,%d) has no chip\n",gpio,value);
+	}
+	WARN_ON(extra_checks && chip->can_sleep);
+	if (chip->set_mux)
+		chip->set_mux(chip, gpio - chip->base, value);
+}
+EXPORT_SYMBOL_GPL(__gpio_set_mux);
+
 
 
 /* There's no value in making it easy to inline GPIO calls that may sleep.

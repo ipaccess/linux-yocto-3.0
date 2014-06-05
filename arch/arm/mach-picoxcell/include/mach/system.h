@@ -22,6 +22,10 @@
 #include <mach/picoxcell/picoxcell.h>
 #include <mach/picoxcell/wdog.h>
 
+
+extern void pc3xx_gpio_board_reset(char mode);
+
+
 static inline void arch_idle(void)
 {
 	/*
@@ -33,6 +37,11 @@ static inline void arch_idle(void)
 
 static inline void arch_reset(int mode, const char *cmd)
 {
+	/* Try resetting via GPIO control line. */
+	pc3xx_gpio_board_reset(mode);
+
+	/* Give it chance to reset. */
+	mdelay(500);
 	/*
 	 * Set the watchdog to expire as soon as possible and reset the
 	 * system.
@@ -45,7 +54,7 @@ static inline void arch_reset(int mode, const char *cmd)
 	/* Give it chance to reset. */
 	mdelay(500);
 
-	pr_crit("watchdog reset failed - entering infinite loop\n");
+	pr_crit("watchdog reset and GPIO reset both failed - entering infinite loop\n");
 }
 
 #endif /* __ASM_ARCH_SYSTEM_H */

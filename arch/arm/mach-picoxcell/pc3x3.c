@@ -302,6 +302,12 @@ static struct mux_def pc3x3_mux[] = {
 	MUXGPIO(arm_gpio1,	1,	17,	RSVD,	0x34,	1,	-1,	-1,	0),
 	MUXGPIO(arm_gpio2,	2,	18,	RSVD,	0x34,	2,	-1,	-1,	0),
 	MUXGPIO(arm_gpio3,	3,	19,	RSVD,	0x34,	3,	-1,	-1,	0),
+#ifdef CONFIG_IPACCESS_IP3XXFF
+	MUXGPIO(arm_gpio16,	16,	0,	RSVD,	0x34,	0,	-1,	-1,	0),
+	MUXGPIO(arm_gpio17,	17,	1,	RSVD,	0x34,	1,	-1,	-1,	0),
+	MUXGPIO(arm_gpio18,	18,	2,	RSVD,	0x34,	2,	-1,	-1,	0),
+	MUXGPIO(arm_gpio19,	19,	3,	RSVD,	0x34,	3,	-1,	-1,	0),
+#endif
 	MUXGPIO(shd_gpio,	8,	8,	RSVD,	0x34,	8,	-1,	-1,	0),
 	MUXGPIO(boot_mode0,	9,	9,	RSVD,	0x34,	9,	-1,	-1,	0),
 	MUXGPIO(boot_mode1,	10,	10,	RSVD,	0x34,	10,	-1,	-1,	0),
@@ -364,7 +370,10 @@ static struct mux_def pc3x3_mux[] = {
 	MUXGPIO(max_ref_clk,	51,	-1,	MAXIM,	-1,	-1,	0x44,	1,	0),
 	MUXGPIO(max_trig_clk,	52,	-1,	MAXIM,	-1,	-1,	0x44,	1,	0),
 
+#ifndef CONFIG_IPACCESS_IP3XXFF_267
+    /*MKS version 1.20.2.1*/
 	MUXGPIO(sdgpio0,	-1,	0,	FRACN,	-1,	-1,	0,	7,	MUX_INVERT_PERIPH),
+#endif
 };
 
 static void pc3x3_init(void);

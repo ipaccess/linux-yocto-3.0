@@ -65,6 +65,9 @@ int picoxcell_is_pc30xx(void)
 		return 0;
 	}
 }
+
+EXPORT_SYMBOL(picoxcell_is_pc3x2);
+EXPORT_SYMBOL(picoxcell_is_pc3x3);
 EXPORT_SYMBOL(picoxcell_is_pc30xx);
 
 const struct picoxcell_soc __init *picoxcell_get_soc(void)

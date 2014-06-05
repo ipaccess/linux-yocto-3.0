@@ -409,6 +409,38 @@ struct picoarray_ops
      * @param pa The device to destroy.
      */
     void ( *destructor )( struct picoarray *pa );
+
+    /*!
+     * Get the ITM, ITS and procIF IRQ resources.
+     * This function will return the pointers to the resources requested on success
+     * or NULL if the resource is already allocated.
+     *
+     * @param pa The device to take to DMA the data.
+     * @param its The ITS resource or NULL on failure
+     * @param itm The ITM resource or NULL on failure
+     * @param procif_irq The IRQ resource or NULL on failure
+     *
+     * @return 0 on success, non-zero on failure
+     */
+    int ( *get_procif_resource )( struct picoarray *pa,
+                                  struct pico_resource **its,
+                                  struct pico_resource **itm,
+                                  struct pico_resource **procif_irq );
+    
+    /*!
+     * Put the ITM, ITS and procIF IRQ resources.
+     * This function will free any non NULL resources specified
+     *
+     * @param pa The device to take to DMA the data.
+     * @param its The ITS resource
+     * @param itm The ITM resource
+     * @param procif_irq The IRQ resource
+     */
+    void ( *put_procif_resource )( struct picoarray *pa,
+                                   struct pico_resource *its,
+                                   struct pico_resource *itm,
+                                   struct pico_resource *procif_irq );
+
 };
 
 /*!

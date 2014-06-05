@@ -109,6 +109,14 @@ struct gpio_chip {
 	void			(*set)(struct gpio_chip *chip,
 						unsigned offset, int value);
 
+	int			(*get_direction)(struct gpio_chip *chip,
+						unsigned offset);
+
+	void			(*set_mux)(struct gpio_chip *chip,
+						unsigned offset, int value);
+ 
+
+
 	int			(*to_irq)(struct gpio_chip *chip,
 						unsigned offset);
 
@@ -163,6 +171,9 @@ extern void gpio_set_value_cansleep(unsigned gpio, int value);
  * the GPIO is constant and refers to some always-present controller,
  * giving direct access to chip registers and tight bitbanging loops.
  */
+extern int __gpio_get_direction(unsigned gpio);
+extern void __gpio_set_mux(unsigned gpio, int value);
+
 extern int __gpio_get_value(unsigned gpio);
 extern void __gpio_set_value(unsigned gpio, int value);
 

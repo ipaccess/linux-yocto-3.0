@@ -14,6 +14,13 @@ config PICOIF
       This driver provides a kernelspace API for accessing picoArray devices
       and a userspace interface through /dev/picoif
 
+config PICOIF_DMAPOOL
+    bool "Picoif DMA buffer pooling"
+    depends on PICOIF
+    ---help---
+      This option enables pooling and reuse of a number of DMA coherent memory
+      buffers by the transport channels.
+
 config PICOIF_PC3XX
     bool "PC3XX picoIf support"
     depends on PICOIF && ARCH_PICOXCELL  && DW_DMAC

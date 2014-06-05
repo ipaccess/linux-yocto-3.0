@@ -541,6 +541,25 @@ config RCU_BOOST_DELAY
 
 endmenu # "RCU Subsystem"
 
+menu "IPAccess 3GAP Oyster Product Variant Options"
+
+config IPACCESS_IP3XXFF
+	bool "Enable configuration define for Oyster 3GAP PC3XX Variant"
+	help
+	  Note that the kernel is variant agnostic (almost) and
+	  this defined is for system and application variant
+	  specific compile behaviour
+	  
+
+config IPACCESS_IP3XXFF_267
+	bool "Enable configuration define for 3XX 267 variant"
+	help
+	  Note that the kernel is variant agnostic (almost) and
+	  this defined is for system and application variant
+	  specific compile behaviour
+	  
+endmenu
+
 config IKCONFIG
 	tristate "Kernel .config support"
 	---help---

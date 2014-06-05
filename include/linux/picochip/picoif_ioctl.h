@@ -24,16 +24,7 @@
 #ifndef __PICOIF_PICOIF_IOCTL_H__
 #define __PICOIF_PICOIF_IOCTL_H__
 
-#ifdef __KERNEL__
-#include <linux/types.h>
-#include <asm/ioctl.h>
-#else /* __KERNEL__ */
-#include <sys/types.h>
-#include <sys/ioctl.h>
-
-#define __user
-#endif /* __KERNEL__ */
-
+#include <linux/ioctl.h>
 /*!
  * \brief Structure to pass config read/write requests between userspace and
  * the kernel.

@@ -1562,6 +1562,9 @@ struct task_struct {
 	unsigned long default_timer_slack_ns;
 
 	struct list_head	*scm_work_list;
+	int			preempt_flag;
+	int			preempt_pid;
+	int			incompleteTicks;
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
 	/* Index of current stored address in ret_stack */
 	int curr_ret_stack;
@@ -2792,5 +2795,9 @@ static inline unsigned long rlimit_max(unsigned int limit)
 }
 
 #endif /* __KERNEL__ */
+
+struct task_struct *find_task_struct_by_pid(pid_t pid);
+unsigned long long ret_now(pid_t pid);
+unsigned long ret_nr_running(void);
 
 #endif

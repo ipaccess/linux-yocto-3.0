@@ -234,6 +234,16 @@ enum {
 #include <asm-generic/gpio.h>
 #include <linux/irq.h>
 
+static inline int gpio_get_direction(unsigned gpio)
+{
+	return __gpio_get_direction(gpio);
+}
+
+static inline void gpio_set_mux(unsigned gpio, int value)
+{
+	__gpio_set_mux(gpio, value);
+}
+
 static inline int gpio_get_value(unsigned gpio)
 {
 	return __gpio_get_value(gpio);

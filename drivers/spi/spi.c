@@ -772,8 +772,8 @@ static int __spi_async(struct spi_device *spi, struct spi_message *message)
 		unsigned flags = master->flags;
 
 		list_for_each_entry(xfer, &message->transfers, transfer_list) {
-			if (xfer->rx_buf && xfer->tx_buf)
-				return -EINVAL;
+	/*		if (xfer->rx_buf && xfer->tx_buf)
+				return -EINVAL;*/
 			if ((flags & SPI_MASTER_NO_TX) && xfer->tx_buf)
 				return -EINVAL;
 			if ((flags & SPI_MASTER_NO_RX) && xfer->rx_buf)

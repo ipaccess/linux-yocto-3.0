@@ -19,7 +19,7 @@
 #include <linux/sysfs.h>
 
 /*! The number of keystream generator device nodes to create. */
-#define MAX_KS_NODES    64
+#define MAX_KS_NODES    96
 
 #define MAX_IV_LEN      32
 

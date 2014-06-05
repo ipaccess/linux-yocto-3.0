@@ -125,7 +125,20 @@ static ssize_t alignment_proc_write(struct file *file, const char __user *buffer
 		if (get_user(mode, buffer))
 			return -EFAULT;
 		if (mode >= '0' && mode <= '5')
+                {
 			ai_usermode = mode - '0';
+#ifdef CONFIG_ALIGNMENT_TRAP
+			/* Allow data aborts if and only if we're fixing up or signalling. */
+			if (cpu_architecture() >= CPU_ARCH_ARMv6 && (cr_alignment & CR_U)) {
+				if (ai_usermode & (UM_FIXUP | UM_SIGNAL)) {
+					cr_alignment |= CR_A;
+				} else {
+					cr_alignment &= ~CR_A;
+				}
+				set_cr(cr_alignment);
+			}
+#endif
+                }
 	}
 	return count;
 }

@@ -37,6 +37,13 @@
 #define HPET_MINOR		228
 #define FUSE_MINOR		229
 #define KVM_MINOR		232
+#define PICOGPIO_MINOR   	243
+#define AD7995_MINOR     	245
+#define MAX6635_MINOR    	246
+#define DAC7512_MINOR    	247
+#define MAX6662_MINOR    	248
+#define PICOIF_MINOR     	249
+#define LM75_MINOR       	250
 #define BTRFS_MINOR		234
 #define AUTOFS_MINOR		235
 #define MAPPER_CTRL_MINOR	236

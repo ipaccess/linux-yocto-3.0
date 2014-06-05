@@ -476,6 +476,11 @@ hwif2_create_trans_instance( struct picoif_module *module,
     struct pico_resource *chan = NULL;
     enum picoarray_device_type dev_type;
     struct pico_resource *its_irq = NULL;
+    struct pico_resource *its_gpr = NULL;
+    struct pico_resource *itm_gpr = NULL;
+    unsigned interrupt_bit = 0;
+    if ( !ctx )
+        goto bad_ctx;
 
     ret = picoif_buf_copy_from( &gparams, params, 0,
                                 sizeof( gparams ) );
@@ -512,22 +517,20 @@ hwif2_create_trans_instance( struct picoif_module *module,
 
     /* Check that the interrupt number is valid */
     if (gparams.dev_num >= HWIF2_MAX_INTERRUPT_NUM)
-        goto out;
+        goto bad_dev_num;
+
 
     /* If this is the first transport on the device, set the context
        parameters */
     if ( !hwif2_mod.params[gparams.dev_num].interrupts_set )
     {
-        struct pico_resource *its_gpr;
-        struct pico_resource *itm_gpr;
-
         ret = -EBUSY;
         itm_gpr = pa->ops->get_resource( pa, PICO_RES_GPR, gparams.itm_gpr, 1 );
         if ( !itm_gpr )
         {
             PRINTD( COMPONENT_HWIF2, DBG_WARN, "unable to get itm gpr: %u",
                     gparams.itm_gpr );
-            goto out;
+            goto bad_gpr;
         }
 
         its_gpr = pa->ops->get_resource( pa, PICO_RES_GPR, gparams.its_gpr, 1 );
@@ -536,7 +539,7 @@ hwif2_create_trans_instance( struct picoif_module *module,
             PRINTD( COMPONENT_HWIF2, DBG_WARN, "unable to get its gpr: %u",
                     gparams.its_gpr );
             pa->ops->put_resource( pa, itm_gpr );
-            goto out;
+            goto bad_gpr;
         }
 
         its_irq = pa->ops->get_resource( pa, PICO_RES_IRQ, its_gpr->metadata,
@@ -564,19 +567,17 @@ hwif2_create_trans_instance( struct picoif_module *module,
             ( gparams.itm_gpr != hwif2_mod.params[gparams.dev_num].itm_gpr ) ||
             ( hwif2_mod.params[gparams.dev_num].interrupts_set &
                                                         (1 << gparams.int_num) ))
-            goto out;
+            goto bad_gpr;
 
-        hwif2_mod.params[gparams.dev_num].interrupts_set |= (1 << gparams.int_num);
+        interrupt_bit =  (((uint32_t)1) << gparams.int_num);
+        hwif2_mod.params[gparams.dev_num].interrupts_set |= interrupt_bit;
     }
-
-    if ( !ctx )
-        goto out;
 
     /* Allocate the new channel and initialise the data members. */
     ret = -ENOMEM;
     channel = kzalloc( sizeof( dma_channel ), GFP_KERNEL );
     if (!channel)
-        goto out;
+        goto bad_channel;
     ctx->private_data = channel;
 
     channel->fifo = dma_buf_cache_alloc( gparams.buf_size );
@@ -611,7 +612,7 @@ hwif2_create_trans_instance( struct picoif_module *module,
     if ( ret )
     {
         PRINTD( COMPONENT_HWIF2, DBG_ERROR, "failed to open DMA channel" );
-        goto bad_description;
+        goto bad_dma_open;
     }
 
     tasklet_init( &channel->tasklet, hwif2_tasklet, ( unsigned long )channel );
@@ -628,25 +629,34 @@ hwif2_create_trans_instance( struct picoif_module *module,
         }
     }
 
-    ret = 0;
-    goto out;
+    return ctx;
 
-bad_description:
 handler_reg_failed:
+    pa->ops->dma_close( pa, chan );
+
+bad_dma_open:
+bad_description:
    dma_buf_cache_free( channel->fifo );
 
 bad_fifo_alloc:
     kfree( channel );
 
-out:
-    if ( ret )
-    {
-        kfree( ctx );
-        if ( chan )
-            pa->ops->put_resource(  pa, chan );
-    }
+bad_channel:
+    hwif2_mod.params[gparams.dev_num].interrupts_set &= ~interrupt_bit;
+    if ( its_gpr )
+        pa->ops->put_resource( pa, its_gpr );
+    if ( itm_gpr )
+        pa->ops->put_resource( pa, itm_gpr );
+    if ( its_irq )
+        pa->ops->put_resource( pa, its_irq );
+bad_gpr:
+bad_dev_num:
+    pa->ops->put_resource(  pa, chan );
 
-    return ret ? ERR_PTR( ret ) : ctx;
+out:
+    kfree( ctx );
+bad_ctx:
+   return ERR_PTR( ret );
 }
 
 /*!

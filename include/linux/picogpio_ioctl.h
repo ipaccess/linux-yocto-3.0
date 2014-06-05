@@ -67,7 +67,13 @@ enum picogpio_pin_direction {
 #define PICOGPIO_ANALOGUE_CONFIG	_IOR(PICOGPIO_IOCTL_BASE, \
 					     PICOGPIO_IOCTL_START + 6, \
 					     picogpio_analogue_config_t)
-#define PICOGPIO_IOCTL_NUM_IOCTL  7
+/*! Configure a GPIO pin's mux state. */
+#define PICOGPIO_SET_MUX         /*lint -e(835, 506, 845, 941, 944, 831)*/ \
+                                 _IOR( PICOGPIO_IOCTL_BASE, \
+        PICOGPIO_IOCTL_START + 7, picogpio_op_t )
+
+
+#define PICOGPIO_IOCTL_NUM_IOCTL 8
 
 void gpio_free_optional_spinlock(unsigned, bool);
 

@@ -40,6 +40,7 @@
 #include "dma_fifo_internal.h"
 #include "dma_internal.h"
 #include "gpr_interrupt_internal.h"
+#include "hwif_internal.h"
 #include "hwif2_internal.h"
 #include "picoarray.h"
 #include "picoif_internal.h"
@@ -150,7 +151,7 @@ static struct picoif_core_t picoif_core = {
     .miscdev    =  {
         .fops   = &picoif_fops,
         .name   = "picoif",
-        .minor  = MISC_DYNAMIC_MINOR,
+        .minor  = PICOIF_MINOR,
     },
 };
 
@@ -1457,6 +1458,16 @@ picoif_init( void )
                 "Direct DMA transport module registration failed\n" );
         goto internal_fail;
     }
+#if 0
+//TO DO NA1
+    ret = hwif_init();
+    if ( ret )
+    {
+        printk( KERN_INFO
+                "HwIF transport module registration failed\n" );
+        goto internal_fail;
+    }
+#endif
 
     ret = hwif2_init();
     if ( ret )
@@ -1465,6 +1476,8 @@ picoif_init( void )
                 "HwIF2 transport module registration failed\n" );
         goto internal_fail;
     }
+
+    dma_buf_cache_init();
 
     ret = 0;
     goto out;

@@ -36,8 +36,8 @@ static const struct file_operations picogpio_fops = {
 };
 
 static struct miscdevice picogpio_dev = {
-	.minor	    = MISC_DYNAMIC_MINOR,
-	.name	    = "gpio",
+	.minor	    = PICOGPIO_MINOR,
+	.name	    = "pc302gpio",
 	.fops	    = &picogpio_fops,
 };
 
@@ -71,6 +71,10 @@ static int picogpio_new_pin(struct file *filp, unsigned gpio)
 		kfree(pin);
 	else
 		list_add(&pin->list, &session->list);
+	/* Read the actual output state of the pin rather than asuming that it
+	 * will be an input when we request it.
+	 */
+	pin->is_input = gpio_get_direction(gpio);
 
 	return ret;
 }
@@ -201,6 +205,10 @@ static long picogpio_ioctl(struct file *filp, unsigned int cmd,
 		ret = picoxcell_gpio_configure_dac(dac_cfg.pin,
 						   dac_cfg.converter_size,
 						   dac_cfg.analogue_rate);
+		break;
+	case PICOGPIO_SET_MUX:
+		gpio_set_mux(op.pin, op.value);
+		ret = 0;
 		break;
 
 	default:

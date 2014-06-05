@@ -176,10 +176,13 @@ static struct phy_device* phy_device_create(struct mii_bus *bus,
 	dev->addr = addr;
 	dev->phy_id = phy_id;
 	dev->bus = bus;
-	dev->dev.parent = bus->parent;
-	dev->dev.bus = &mdio_bus_type;
-	dev->irq = bus->irq != NULL ? bus->irq[addr] : PHY_POLL;
-	dev_set_name(&dev->dev, PHY_ID_FMT, bus->id, addr);
+	if (bus) {
+		dev->dev.parent = bus->parent;
+		dev->dev.bus = &mdio_bus_type;
+		dev->irq = bus->irq != NULL ? bus->irq[addr] : PHY_POLL;
+		dev_set_name(&dev->dev, PHY_ID_FMT, bus->id, addr);
+	}
+
 
 	dev->state = PHY_DOWN;
 

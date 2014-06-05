@@ -267,6 +267,9 @@ obj-$(CONFIG_XTENSA_XT2000_SONIC) += xtsonic.o
 obj-$(CONFIG_DNET) += dnet.o
 obj-$(CONFIG_MACB) += macb.o
 obj-$(CONFIG_S6GMAC) += s6gmac.o
+obj-$(CONFIG_PC3XX_EMAC) += pc3xx_emac_ipa.o
+pc3xx_emac_ipa-objs := pc3xx_emac.o pc3xx_i2c_phy.o
+
 
 obj-$(CONFIG_ARM) += arm/
 obj-$(CONFIG_DEV_APPLETALK) += appletalk/

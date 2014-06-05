@@ -235,6 +235,20 @@ config MACB
 	  To compile this driver as a module, choose M here: the module
 	  will be called macb.
 
+config PC3XX_EMAC
+        tristate "picoChip PC3XX Ethernet support"
+        depends on ARCH_PICOXCELL
+        help 
+          This driver provides Ethernet support for the picoChip PC3XX device.
+
+config PC3XX_MICREL_VLAN_SWITCH
+        depends on PC3XX_EMAC && I2C
+        bool "Micrel KSZ8863/8873 is fitted"
+        help 
+          Select this if the Micrel KSZ8863/8873 VLAN switch is fitted.
+          The switch will provide the Ethernet PHY, configured via I2C
+
+
 source "drivers/net/arm/Kconfig"
 
 config AX88796

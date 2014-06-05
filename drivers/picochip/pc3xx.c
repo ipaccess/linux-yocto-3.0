@@ -862,6 +862,7 @@ pc3xx_remove_irq_handler( struct picoarray *pa,
         if ( handler->irq == irq )
         {
             list_del( pos );
+            kfree(handler);
             break;
         }
     }
@@ -1179,6 +1180,43 @@ pc3xx_get_device_type( struct picoarray *pa )
     return PICOARRAY_PC3XX;
 }
 
+/*!
+ * Get the ITM, ITS and procIF IRQ resources.
+ * This function will return an error as the PC3XX has no procIF interface
+ *
+ * @param pa The device to take to DMA the data.
+ * @param its The ITS resource or NULL on failure
+ * @param itm The ITM resource or NULL on failure
+ * @param procif_irq The IRQ resource or NULL on failure
+ *
+ * @return EINVAL in all situations
+ */
+static int
+pc3xx_get_procif_resource( struct picoarray *pa,
+                           struct pico_resource **its,
+                           struct pico_resource **itm,
+                           struct pico_resource **procif_irq )
+{
+    return -EINVAL;
+}
+
+/*!
+ * Put the ITM, ITS and procIF IRQ resources.
+ * This function is not relevant to the PC3XX as it has no procIF interface.
+ *
+ * @param pa The device to take to DMA the data.
+ * @param its The ITS resource
+ * @param itm The ITM resource
+ * @param procif_irq The IRQ resource
+ */
+static void
+pc3xx_put_procif_resource( struct picoarray *pa,
+                           struct pico_resource *its,
+                           struct pico_resource *itm,
+                           struct pico_resource *procif_irq )
+{
+}
+
 /*! Operations for the PC3XX devices. */
 static struct picoarray_ops pc3xx_ops = {
     .sync                = pc3xx_sync,
@@ -1191,7 +1229,9 @@ static struct picoarray_ops pc3xx_ops = {
     .register_write      = pc3xx_register_write,
     .reset               = pc3xx_reset,
     .get_resource        = generic_get_resource,
+    .get_procif_resource = pc3xx_get_procif_resource,
     .put_resource        = generic_put_resource,
+    .put_procif_resource = pc3xx_put_procif_resource,
     .destructor          = pc3xx_destroy,
     .add_irq_handler     = pc3xx_add_irq_handler,
     .remove_irq_handler  = pc3xx_remove_irq_handler,

@@ -41,6 +41,25 @@ config PICOXCELL_STOP_WDT_IN_SUSPEND
 	  and PC30XX devices.  This will prevent the watchdog from rebooting
 	  the device when suspend is entered.
 
+config IP3XXFF_XC
+        bool "Support IPA changes to XC"
+        help
+          Include support for custom changes to the IPA CPE XC Board based on PC7302.
+
+config IP3XXFF_267
+        bool "Support IPA changes to 267"
+        help
+          Include support for custom changes to the IPA 267 Modular Baseband Board based on PC7302.
+
+config PC3XX_ASYNC_OPROF
+        bool "Support async oprofile sampling (Uses Timer 2)"
+        help
+          This controls whether to use a separate hardware timer for oprofile
+          sampling rather than the system tick timer.  If this is selected then
+          the oprofile sample rate will eventually gather samples from a range
+          of points within the system tick.
+
+
 config PC30XX_HW_NAND
 	bool "Hardware NAND flash support for PC30XX"
 	depends on PICOXCELL_PC30XX

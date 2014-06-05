@@ -88,6 +88,20 @@ static inline int gpio_set_debounce(unsigned gpio, unsigned debounce)
 	return -ENOSYS;
 }
 
+static inline int gpio_get_direction(unsigned gpio)
+{
+	/* GPIO can never have been requested or set as {in,out}put */
+	WARN_ON(1);
+	return 0;
+}
+
+static inline void gpio_set_mux(unsigned gpio, int value)
+{
+	/* GPIO can never have been requested or set as output */
+	WARN_ON(1);
+}
+
+
 static inline int gpio_get_value(unsigned gpio)
 {
 	/* GPIO can never have been requested or set as {in,out}put */

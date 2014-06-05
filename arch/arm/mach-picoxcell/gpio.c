@@ -20,6 +20,18 @@
 
 #include "mux.h"
 
+#if defined(CONFIG_IPACCESS_IP3XXFF_267)
+
+#define  PC3XX_RESET_OUTPUT_PIN  PC3X3_GPIO_PIN_ARM_17
+
+#else
+ 
+/* Note: This enum does for both PC3X2 and PC3X3 as it is one of the first 8 gpios */
+#define  PC3XX_RESET_OUTPUT_PIN  PC3X2_GPIO_PIN_ARM_1
+
+#endif
+
+
 static struct {
 	struct picoxcell_gpio_bank	*banks;
 	int				nr_banks;
@@ -424,6 +436,27 @@ static struct platform_driver sdgpio_driver = {
 		.name	= "sdgpio",
 	},
 };
+
+/* A function that we pass to the kernel so that it can do a hard reset */
+void pc3xx_gpio_board_reset(char mode)
+{
+        /* RESET the board!! */
+        if (gpio_request( PC3XX_RESET_OUTPUT_PIN, "reset") < 0) 
+        {    
+                return;
+        }    
+    
+        gpio_set_value( PC3XX_RESET_OUTPUT_PIN, 0 ); 
+    
+        if (gpio_direction_output( PC3XX_RESET_OUTPUT_PIN, 0 ) < 0) 
+        {    
+                return;
+        }    
+    
+        gpio_set_value( PC3XX_RESET_OUTPUT_PIN, 0 ); 
+}
+EXPORT_SYMBOL_GPL(pc3xx_gpio_board_reset);
+
 
 static int __init sdgpio_init(void)
 {
