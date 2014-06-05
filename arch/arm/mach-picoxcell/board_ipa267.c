@@ -23,6 +23,7 @@
 #include <linux/mtd/physmap.h>
 #include <linux/spi/flash.h>
 #include <linux/spi/spi.h>
+#include <linux/i2c.h>
 
 #include <mach/hardware.h>
 #include <mach/picoxcell/axi2cfg.h>
@@ -137,6 +138,14 @@ static struct platform_device ipa267_i2c_bus0_device = {
 	}
 };
 
+static struct i2c_board_info __initdata ipa267_i2c_bus0_devices[] = {
+	{ I2C_BOARD_INFO("max6635",   0x4B), },
+	{ I2C_BOARD_INFO("atmel_twi", 0x29), },
+	{ I2C_BOARD_INFO("ad7995",    0x28), },
+	{ I2C_BOARD_INFO("micrel",    0x5F), },
+	{ I2C_BOARD_INFO("lm75",      0x48), }
+};
+
 static struct i2c_gpio_platform_data ipa267_i2c_bus1_data = {
 	.sda_pin = PC3X3_GPIO_PIN_ARM_44,
 	.scl_pin = PC3X3_GPIO_PIN_ARM_43,
@@ -152,12 +161,7 @@ static struct platform_device ipa267_i2c_bus1_device = {
 	}
 };
 
-static struct i2c_board_info __initdata ipa267_i2c_devices[] = {
-	{ I2C_BOARD_INFO("max6635",   0x4B), },
-	{ I2C_BOARD_INFO("atmel_twi", 0x29), },
-	{ I2C_BOARD_INFO("ad7995",    0x28), },
-	{ I2C_BOARD_INFO("micrel",    0x5F), },
-	{ I2C_BOARD_INFO("lm75",      0x48), },
+static struct i2c_board_info __initdata ipa267_i2c_bus1_devices[] = {
 	{ I2C_BOARD_INFO("at91_i2c",  0x49), },
 	{ I2C_BOARD_INFO("ipa2g",     0x48), }, /* smells funny */
 };
@@ -335,6 +339,10 @@ static void __init ipa267_init(void)
 	platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
 	spi_register_board_info(ipa267_spi_board_info,
 				ARRAY_SIZE(ipa267_spi_board_info));
+	i2c_register_board_info(0, ipa267_i2c_bus0_devices,
+				ARRAY_SIZE(ipa267_i2c_bus0_devices));
+	i2c_register_board_info(1, ipa267_i2c_bus1_devices,
+				ARRAY_SIZE(ipa267_i2c_bus1_devices));
 }
 
 MACHINE_START(IPA267, "IPA267")
