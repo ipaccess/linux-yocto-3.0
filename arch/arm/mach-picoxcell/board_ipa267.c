@@ -24,6 +24,7 @@
 #include <linux/spi/flash.h>
 #include <linux/spi/spi.h>
 #include <linux/i2c.h>
+#include <linux/i2c-gpio.h>
 
 #include <mach/hardware.h>
 #include <mach/picoxcell/axi2cfg.h>
