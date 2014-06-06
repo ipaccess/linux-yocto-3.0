@@ -23,6 +23,7 @@
 #include <linux/mtd/physmap.h>
 #include <linux/spi/flash.h>
 #include <linux/spi/spi.h>
+#include <linux/spi/spi_gpio.h>
 #include <linux/i2c.h>
 #include <linux/i2c-gpio.h>
 
@@ -120,6 +121,25 @@ static struct platform_device ipa267_nand = {
 	.id		    = -1,
 	.dev.platform_data  = &ipa267_nand_platdata,
 };
+
+/*
+ * Add SPI Busses
+ */
+struct spi_gpio_platform_data ipa267_spi_gpio_bus1_platform_data = {
+	.sck            = PC3X3_GPIO_PIN_ARM_10,
+	.mosi           = PC3X3_GPIO_PIN_ARM_9,
+	.miso           = PC3X3_GPIO_PIN_ARM_8,
+	.num_chipselect = 2 /* revise this */
+};
+
+static struct platform_device ipa267_spi_gpio_bus1_device = {
+	.name = "spi_gpio",
+	.id = 1,
+	.dev = {
+		.platform_data = &ipa267_spi_gpio_bus1_platform_data,
+	}
+};
+
 
 /*
  * We have two i2c busses, and both are driven using GPIO.
@@ -255,9 +275,9 @@ static struct spi_board_info ipa267_spi_board_info[] __initdata = {
 };
 
 static struct platform_device *ipa267_devices[] __initdata = {
-        /* &ipa267_nand, -- first sanitise the NAND setup and stop doing duplicate work */
+	&ipa267_spi_gpio_bus1_device,
         &ipa267_i2c_bus0_device,
-        &ipa267_i2c_bus1_device,
+        /* &ipa267_i2c_bus1_device, */
 };
 
 /*
@@ -280,6 +300,33 @@ static void ipa267_pinmux(void)
 		MUXCFG("arm_gpio18",     MUX_ARM),
 		MUXCFG("arm_gpio19",     MUX_ARM),
 		*/
+
+		/*
+		 * SPI-RF (SPI Bus 1)
+		 */
+		MUXCFG("arm8",           MUX_ARM), /* SPI-RF CS0 */
+		MUXCFG("arm9",           MUX_ARM), /* SPI-RF CS1 */
+		MUXCFG("arm10",          MUX_ARM), /* SPI-RF SCK */
+		MUXCFG("arm11",          MUX_ARM), /* SPI-RF MISO */
+		MUXCFG("arm12",          MUX_ARM), /* SPI-RF MOSI */
+		MUXCFG("arm16",          MUX_ARM), /* SPI-RF CS2 */
+
+		/*
+		 * SPI-RF (SPI Bus 1)
+		 */
+		MUXCFG("arm36",          MUX_ARM), /* SPI-AUX CS0 */
+		MUXCFG("arm37",          MUX_ARM), /* SPI-AUX CS1 */
+		MUXCFG("arm38",          MUX_ARM), /* SPI-AUX CS2 */
+		MUXCFG("arm39",          MUX_ARM), /* SPI-AUX CS3 */
+		MUXCFG("arm40",          MUX_ARM), /* SPI-AUX SCK */
+		MUXCFG("arm41",          MUX_ARM), /* SPI-AUX MISO */
+		MUXCFG("arm42",          MUX_ARM), /* SPI-AUX MOSI */
+
+		/*
+		 * I2C-GPIO Bus 0
+		 */
+		MUXCFG("arm0",           MUX_ARM), /* I2C-AUX SCL */
+		MUXCFG("arm7",           MUX_ARM), /* I2C-AUX SDA */
 
 		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */ /* needed by ipa267_init_nand */
 		MUXCFG("pai_tx_data1", MUX_PERIPHERAL_PAI), /* PAI Iface */
