@@ -377,7 +377,7 @@ static void ipa267_cfgmux(void)
 #if 1
 		MUXCFG("arm_gpio0",      MUX_ARM), /* ARM_0 : I2C-AUX SCL */
 #endif
-#if 0
+#if 1
 		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */ /* needed by ipa267_init_nand */
 		MUXCFG("pai_tx_data1", MUX_PERIPHERAL_PAI), /* PAI Iface */
 		MUXCFG("pai_tx_data2", MUX_PERIPHERAL_PAI), /* PAI Iface */
