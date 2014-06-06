@@ -261,6 +261,9 @@ static struct flash_platform_data ipa267_spi_flash_data = {
  * SPI Board Data for SPI bus 0 (picoxcell-spi)
  */
 static struct spi_board_info ipa267_spi_board_info[] __initdata = {
+	/*
+	 * CS0 on picoxcell-spi is the SPI Flash
+	 */
 	{
 		.modalias	= "m25p80",
 		.platform_data	= &ipa267_spi_flash_data,
@@ -390,7 +393,7 @@ static void __init ipa267_init(void)
 #if 1
 	platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
 #endif
-#if 0
+#if 1
 	spi_register_board_info(ipa267_spi_board_info,
 				ARRAY_SIZE(ipa267_spi_board_info));
 #endif
