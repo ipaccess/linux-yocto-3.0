@@ -293,10 +293,10 @@ static struct platform_device *ipa267_devices[] __initdata = {
  */
 
 static struct mux_def ipa267_mux[] = {
-	MUXGPIO(arm_gpio16,    16,       0,      ARM,   0x34,  16,      -1,     -1,     0),
-	MUXGPIO(arm_gpio17,    17,       1,      ARM,   0x34,  17,      -1,     -1,     0),
-	MUXGPIO(arm_gpio18,    18,       2,      ARM,   0x34,  18,      -1,     -1,     0),
-	MUXGPIO(arm_gpio19,    19,       3,      ARM,   0x34,  19,      -1,     -1,     0),
+	MUXGPIO(arm_gpio16,    16,       0,     RSVD,   0x34,  16,      -1,     -1,     0),
+	MUXGPIO(arm_gpio17,    17,       1,     RSVD,   0x34,  17,      -1,     -1,     0),
+	MUXGPIO(arm_gpio18,    18,       2,     RSVD,   0x34,  18,      -1,     -1,     0),
+	MUXGPIO(arm_gpio19,    19,       3,     RSVD,   0x34,  19,      -1,     -1,     0),
 };
 
 static void ipa267_cfgmux(void)
