@@ -315,17 +315,17 @@ static void ipa267_cfgmux(void)
 		/* MUXCFG("arm16",          MUX_ARM), */ /* ARM_16: SPI-RF CS2 - no such animal?*/
 
 		/*
-		 * SPI-AUX (SPI Bus 2)
+		 * SPI-AUX (SPI Bus 2) - this interferes with the SPI flash - it's quite likely the decode pins and wonky
 		 */
-#if 1
+#if 0
 		MUXCFG("decode0",        MUX_ARM), /* ARM_36: SPI-AUX CS0 */
 		MUXCFG("decode1",        MUX_ARM), /* ARM_37: SPI-AUX CS1 */
 		MUXCFG("decode2",        MUX_ARM), /* ARM_38: SPI-AUX CS2 */
 		MUXCFG("decode3",        MUX_ARM), /* ARM_39: SPI-AUX CS3 */
+#endif
 		MUXCFG("ssi_clk",        MUX_ARM), /* ARM_40: SPI-AUX SCK */
 		MUXCFG("ssi_data_in",    MUX_ARM), /* ARM_41: SPI-AUX MISO */
 		MUXCFG("ssi_data_out",   MUX_ARM), /* ARM_42: SPI-AUX MOSI */
-#endif
 		/*
 		 * I2C-GPIO Bus 0
 		 */
