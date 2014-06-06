@@ -183,8 +183,8 @@ static struct platform_device ipa267_i2c_bus1_device = {
 };
 
 static struct i2c_board_info __initdata ipa267_i2c_bus1_devices[] = {
-	{ I2C_BOARD_INFO("at91_i2c",  0x49), }, /* really? is this not GPIO of some kind? */
-	{ I2C_BOARD_INFO("ipa2g",     0x48), }, /* smells funny, what does this actually do? */
+	{ I2C_BOARD_INFO("at91_i2c",  0x49), },
+	{ I2C_BOARD_INFO("ipa2g",     0x48), },
 };
 
 static void ipa267_init_nand(void)
@@ -302,7 +302,7 @@ static struct spi_board_info ipa267_spi_board_info[] __initdata = {
 static struct platform_device *ipa267_devices[] __initdata = {
 	&ipa267_spi_gpio_bus1_device,
         &ipa267_i2c_bus0_device,
-        /* &ipa267_i2c_bus1_device, */
+        &ipa267_i2c_bus1_device,
 };
 
 /*
