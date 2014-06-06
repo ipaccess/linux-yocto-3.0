@@ -140,11 +140,11 @@ static struct platform_device ipa267_i2c_bus0_device = {
 };
 
 static struct i2c_board_info __initdata ipa267_i2c_bus0_devices[] = {
-	{ I2C_BOARD_INFO("max6635",   0x4B), },
-	{ I2C_BOARD_INFO("atmel_twi", 0x29), },
-	{ I2C_BOARD_INFO("ad7995",    0x28), },
-	{ I2C_BOARD_INFO("micrel",    0x5F), },
-	{ I2C_BOARD_INFO("lm75",      0x48), }
+	{ I2C_BOARD_INFO("max6635",   0x4B), }, /* maxim phy? */
+	{ I2C_BOARD_INFO("atmel_twi", 0x29), }, /* see at91 stuff, do we have this? */
+	{ I2C_BOARD_INFO("ad7995",    0x28), }, /* we do have one of these, but where is it attached? */
+	{ I2C_BOARD_INFO("micrel",    0x5F), }, /* micrel phy I assume? */
+	{ I2C_BOARD_INFO("lm75",      0x48), } /* lm75 temperature sensor? */
 };
 
 static struct i2c_gpio_platform_data ipa267_i2c_bus1_data = {
@@ -163,26 +163,20 @@ static struct platform_device ipa267_i2c_bus1_device = {
 };
 
 static struct i2c_board_info __initdata ipa267_i2c_bus1_devices[] = {
-	{ I2C_BOARD_INFO("at91_i2c",  0x49), },
-	{ I2C_BOARD_INFO("ipa2g",     0x48), }, /* smells funny */
+	{ I2C_BOARD_INFO("at91_i2c",  0x49), }, /* really? is this not GPIO of some kind? */
+	{ I2C_BOARD_INFO("ipa2g",     0x48), }, /* smells funny, what does this actually do? */
 };
 
 static void ipa267_init_nand(void)
 {
 	struct clk *ebi_clk = clk_get(NULL, "ebi");
 	int err;
-	const struct mux_cfg pc3x2_cfg[] = {
-		MUXCFG("arm4", MUX_ARM),
-	};
 	const struct mux_cfg pc3x3_cfg[] = {
 		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI),
 		MUXCFG("ebi_addr22", MUX_ARM),
 	};
 
-	if (picoxcell_is_pc3x3())
-		err = mux_configure_table(pc3x3_cfg, ARRAY_SIZE(pc3x3_cfg));
-	else
-		err = mux_configure_table(pc3x2_cfg, ARRAY_SIZE(pc3x2_cfg));
+	err = mux_configure_table(pc3x3_cfg, ARRAY_SIZE(pc3x3_cfg));
 	if (err) {
 		pr_err("unable to set ebi_addr22 for use as gpio-nand cle\n");
 		return;
@@ -275,16 +269,19 @@ static struct platform_device *ipa267_devices[] __initdata = {
  * CS3: Aux Radio Mux 3
  */
 
-static void ipa267_mux_gpios(void)
+static void ipa267_pinmux(void)
 {
 	int err;
 	const struct mux_cfg brd267_cfg[] = {
+		/*
+		These are not registered as MUXGPIO by picoxcell_core - do they belong to the ARM by default?
 		MUXCFG("arm_gpio16",     MUX_ARM),
 		MUXCFG("arm_gpio17",     MUX_ARM),
 		MUXCFG("arm_gpio18",     MUX_ARM),
 		MUXCFG("arm_gpio19",     MUX_ARM),
+		*/
 
-		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */
+		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */ /* needed by ipa267_init_nand */
 		MUXCFG("pai_tx_data1", MUX_PERIPHERAL_PAI), /* PAI Iface */
 		MUXCFG("pai_tx_data2", MUX_PERIPHERAL_PAI), /* PAI Iface */
 		MUXCFG("pai_tx_data3", MUX_PERIPHERAL_PAI), /* PAI Iface */
@@ -309,7 +306,7 @@ static void ipa267_mux_gpios(void)
 		MUXCFG("ebi_addr19",   MUX_ARM),
 		MUXCFG("ebi_addr20",   MUX_ARM),
 		MUXCFG("ebi_addr21",   MUX_ARM),
-		MUXCFG("ebi_addr22",   MUX_ARM),
+		MUXCFG("ebi_addr22",   MUX_ARM), /* needed by ipa267_init_nand */
 		MUXCFG("ebi_addr23",   MUX_ARM),
 		MUXCFG("ebi_addr24",   MUX_ARM),
 		MUXCFG("ebi_addr25",   MUX_ARM),
@@ -324,7 +321,7 @@ static void ipa267_mux_gpios(void)
 	err = mux_configure_table(brd267_cfg, ARRAY_SIZE(brd267_cfg));
 
 	if (err) {
-		pr_err("ipa267_mux_gpios: unable to mux gpios\n");
+		pr_err("ipa267_pinmux: unable to mux gpios\n");
 		return;
 	}
 }
@@ -335,8 +332,8 @@ static void __init ipa267_init(void)
 	picoxcell_core_init();
 
 	ipa267_register_uarts();
+	ipa267_pinmux();
 	ipa267_init_nand();
-	ipa267_mux_gpios();
 	ipa267_panic_init();
 	platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
 	spi_register_board_info(ipa267_spi_board_info,
