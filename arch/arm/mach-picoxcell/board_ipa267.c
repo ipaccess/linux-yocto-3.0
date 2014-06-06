@@ -276,7 +276,7 @@ static struct spi_board_info ipa267_spi_board_info[] __initdata = {
 
 static struct platform_device *ipa267_devices[] __initdata = {
 	&ipa267_spi_gpio_bus1_device,
-        &ipa267_i2c_bus0_device,
+        /* &ipa267_i2c_bus0_device, */
         /* &ipa267_i2c_bus1_device, */
 };
 
@@ -289,7 +289,7 @@ static struct platform_device *ipa267_devices[] __initdata = {
  * CS3: Aux Radio Mux 3
  */
 
-static void ipa267_pinmux(void)
+static void ipa267_cfgmux(void)
 {
 	int err;
 	const struct mux_cfg brd267_cfg[] = {
@@ -314,6 +314,7 @@ static void ipa267_pinmux(void)
 		/*
 		 * SPI-RF (SPI Bus 1)
 		 */
+#if 0
 		MUXCFG("decode0",        MUX_ARM), /* ARM_36: SPI-AUX CS0 */
 		MUXCFG("decode1",        MUX_ARM), /* ARM_37: SPI-AUX CS1 */
 		MUXCFG("decode2",        MUX_ARM), /* ARM_38: SPI-AUX CS2 */
@@ -321,11 +322,13 @@ static void ipa267_pinmux(void)
 		MUXCFG("ssi_clk",        MUX_ARM), /* ARM_40: SPI-AUX SCK */
 		MUXCFG("ssi_data_in",    MUX_ARM), /* ARM_41: SPI-AUX MISO */
 		MUXCFG("ssi_data_out",   MUX_ARM), /* ARM_42: SPI-AUX MOSI */
-
+#endif
 		/*
 		 * I2C-GPIO Bus 0
 		 */
+#if 0
 		MUXCFG("arm_gpio0",      MUX_ARM), /* ARM_0 : I2C-AUX SCL */
+#endif
 
 		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */ /* needed by ipa267_init_nand */
 		MUXCFG("pai_tx_data1", MUX_PERIPHERAL_PAI), /* PAI Iface */
@@ -367,7 +370,7 @@ static void ipa267_pinmux(void)
 	err = mux_configure_table(brd267_cfg, ARRAY_SIZE(brd267_cfg));
 
 	if (err) {
-		pr_err("ipa267_pinmux: unable to mux gpios\n");
+		pr_err("ipa267_cfgmux: unable to mux gpios\n");
 		return;
 	}
 }
@@ -378,16 +381,24 @@ static void __init ipa267_init(void)
 	picoxcell_core_init();
 
 	ipa267_register_uarts();
-	ipa267_pinmux();
+#if 0
+	ipa267_cfgmux();
+#endif
 	ipa267_init_nand();
 	ipa267_panic_init();
+#if 0
 	platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
+#endif
+#if 0
 	spi_register_board_info(ipa267_spi_board_info,
 				ARRAY_SIZE(ipa267_spi_board_info));
+#endif
+#if 0
 	i2c_register_board_info(0, ipa267_i2c_bus0_devices,
 				ARRAY_SIZE(ipa267_i2c_bus0_devices));
 	i2c_register_board_info(1, ipa267_i2c_bus1_devices,
 				ARRAY_SIZE(ipa267_i2c_bus1_devices));
+#endif
 }
 
 MACHINE_START(IPA267, "IPA267")
