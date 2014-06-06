@@ -127,9 +127,9 @@ static struct platform_device ipa267_nand = {
  */
 struct spi_gpio_platform_data ipa267_spi_gpio_bus1_platform_data = {
 	.sck            = PC3X3_GPIO_PIN_ARM_10,
-	.mosi           = PC3X3_GPIO_PIN_ARM_9,
-	.miso           = PC3X3_GPIO_PIN_ARM_8,
-	.num_chipselect = 2 /* revise this */
+	.miso           = PC3X3_GPIO_PIN_ARM_11,
+	.mosi           = PC3X3_GPIO_PIN_ARM_12,
+	.num_chipselect = 3,
 };
 
 static struct platform_device ipa267_spi_gpio_bus1_device = {
@@ -153,7 +153,7 @@ static struct i2c_gpio_platform_data ipa267_i2c_bus0_data = {
 
 static struct platform_device ipa267_i2c_bus0_device = {
 	.name = "i2c-gpio",
-	.id = 0, /* should be 0 as I read the code... */
+	.id = 0,
 	.dev = {
 		.platform_data = &ipa267_i2c_bus0_data,
 	}
@@ -292,40 +292,63 @@ static struct platform_device *ipa267_devices[] __initdata = {
  * CS3: Aux Radio Mux 3
  */
 
+static struct mux_def ipa267_mux[] = {
+	MUXGPIO(arm_gpio16,    16,       0,      ARM,   0x34,  16,      -1,     -1,     0),
+	MUXGPIO(arm_gpio17,    17,       1,      ARM,   0x34,  17,      -1,     -1,     0),
+	MUXGPIO(arm_gpio18,    18,       2,      ARM,   0x34,  18,      -1,     -1,     0),
+	MUXGPIO(arm_gpio19,    19,       3,      ARM,   0x34,  19,      -1,     -1,     0),
+};
+
 static void ipa267_cfgmux(void)
 {
 	int err;
+
 	const struct mux_cfg brd267_cfg[] = {
-		/*
-		These are not registered as MUXGPIO by picoxcell_core - do they belong to the ARM by default?
 		MUXCFG("arm_gpio16",     MUX_ARM),
 		MUXCFG("arm_gpio17",     MUX_ARM),
 		MUXCFG("arm_gpio18",     MUX_ARM),
 		MUXCFG("arm_gpio19",     MUX_ARM),
-		*/
 
 		/*
 		 * SPI-RF (SPI Bus 1)
+		 *
+		 * Confusion Reigns - picoXcell docs say this is the immutable mapping:
+		 *  ARM_8  : [shd_gpio]        : SPI-RF MISO
+		 *  ARM_9  : [boot_mode0]      : SPI-RF MOSI
+		 *  ARM_10 : [boot_mode1]      : SPI-RF SCK
+		 *  ARM_11 : [sdram_speed_sel] : SPI-RF CS0 / fast GPIO
+		 *  ARM_12 : [mii_rev_en]      : SPI-RF CS1 / fast GPIO
+		 *  ARM_13 : [mii_rmii_en]     : fast GPIO
+		 *  ARM_14 : [mii_speed_sel]   : SPI-RF CS2 / fast GPIO
+		 *
+		 * Further, they state:
+		 *  For customers to make use of the benefits of the Radio API, it is
+		 *  mandatory that the customers leave GPIOs (8-14) unused so that the
+		 *  Radio API can drive the SPI Interface.
+		 *
+		 * So what gives? Have we changed things this much?
 		 */
 		MUXCFG("shd_gpio",       MUX_ARM), /* ARM_8 : SPI-RF CS0 */
 		MUXCFG("boot_mode0",     MUX_ARM), /* ARM_9 : SPI-RF CS1 */
 		MUXCFG("boot_mode1",     MUX_ARM), /* ARM_10: SPI-RF SCK */
 		MUXCFG("sdram_speed_sel",MUX_ARM), /* ARM_11: SPI-RF MISO */
 		MUXCFG("mii_rev_en",     MUX_ARM), /* ARM_12: SPI-RF MOSI */
-		/* MUXCFG("arm16",          MUX_ARM), */ /* ARM_16: SPI-RF CS2 - no such animal?*/
+		MUXCFG("mii_rmii_en",    MUX_ARM), /* ARM_13: SPI-RF fast GPIO */
+		MUXCFG("mii_speed_sel",  MUX_ARM), /* ARM_14: SPI-RF CS2 / fast GPIO */
+		MUXCFG("arm_gpio16",     MUX_ARM), /* ARM_16: SPI-RF CS2 */
 
+#if 0
 		/*
 		 * SPI-AUX (SPI Bus 2) - this interferes with the SPI flash - it's quite likely the decode pins and wonky
 		 */
-#if 0
 		MUXCFG("decode0",        MUX_ARM), /* ARM_36: SPI-AUX CS0 */
 		MUXCFG("decode1",        MUX_ARM), /* ARM_37: SPI-AUX CS1 */
 		MUXCFG("decode2",        MUX_ARM), /* ARM_38: SPI-AUX CS2 */
 		MUXCFG("decode3",        MUX_ARM), /* ARM_39: SPI-AUX CS3 */
-#endif
 		MUXCFG("ssi_clk",        MUX_ARM), /* ARM_40: SPI-AUX SCK */
 		MUXCFG("ssi_data_in",    MUX_ARM), /* ARM_41: SPI-AUX MISO */
 		MUXCFG("ssi_data_out",   MUX_ARM), /* ARM_42: SPI-AUX MOSI */
+#endif
 		/*
 		 * I2C-GPIO Bus 0
 		 */
@@ -382,6 +405,7 @@ static void ipa267_cfgmux(void)
 static void __init ipa267_init(void)
 {
 	picoxcell_tsu_init(20000000);
+	picoxcell_mux_register(ipa267_mux, ARRAY_SIZE(ipa267_mux));
 	picoxcell_core_init();
 
 	ipa267_register_uarts();
