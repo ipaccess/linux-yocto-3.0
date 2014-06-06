@@ -443,7 +443,7 @@ static void __init ipa267_init(void)
 	spi_register_board_info(ipa267_spi_board_info,
 				ARRAY_SIZE(ipa267_spi_board_info));
 #endif
-#if 0
+#if 1
 	i2c_register_board_info(0, ipa267_i2c_bus0_devices,
 				ARRAY_SIZE(ipa267_i2c_bus0_devices));
 	i2c_register_board_info(1, ipa267_i2c_bus1_devices,
