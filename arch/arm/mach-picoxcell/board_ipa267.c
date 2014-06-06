@@ -271,15 +271,37 @@ static struct spi_board_info ipa267_spi_board_info[] __initdata = {
 		.max_speed_hz	= 2000000,
 		.bus_num	= 0,
 		.chip_select	= 0,
+	},
+	/*
+	 * CS1: EBI: Debug interface
+	 */
+	/*
+	 * CS2: SPI: Reference Clock Control DAC
+	 */
+	{
+		.modalias	= "dac7512",
+		.platform_data	= NULL,
+		.mode		= SPI_MODE_1,  /* Idle clock is low.  Latch on falling edge (second edge) */
+		.max_speed_hz	= 10000, /* 10kHz (not 20MHz, we'd get only 80 CPU cycles between writes) */
+		.bus_num	= 0,
+		.chip_select	= 2,
+	},
+	/*
+	 * CS3: SPI: Thermal Sensor
+	 */
+	{
+		.modalias	= "max6662",
+		.platform_data	= NULL,
+		.mode		= SPI_3WIRE | SPI_MODE_3,  /* Idle clock is high.  Latch on rising edge (second edge) */
+		.max_speed_hz	= 10000, /* 10kHz */
+		.bus_num	= 0,
+		.chip_select	= 3,
 	}
-	/* CS1: EBI: Debug interface */
-	/* CS2: SPI: Reference Clock Control DAC -- dac7512? */
-	/* CS3: SPI: Thermal Sensor -- lm75? */
 };
 
 static struct platform_device *ipa267_devices[] __initdata = {
 	&ipa267_spi_gpio_bus1_device,
-        /* &ipa267_i2c_bus0_device, */
+        &ipa267_i2c_bus0_device,
         /* &ipa267_i2c_bus1_device, */
 };
 
@@ -352,7 +374,7 @@ static void ipa267_cfgmux(void)
 		/*
 		 * I2C-GPIO Bus 0
 		 */
-#if 0
+#if 1
 		MUXCFG("arm_gpio0",      MUX_ARM), /* ARM_0 : I2C-AUX SCL */
 #endif
 #if 0
