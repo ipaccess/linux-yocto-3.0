@@ -134,7 +134,7 @@ struct spi_gpio_platform_data ipa267_spi_gpio_bus1_platform_data = {
 
 static struct platform_device ipa267_spi_gpio_bus1_device = {
 	.name = "spi_gpio",
-	.id = 0,
+	.id = 1,
 	.dev = {
 		.platform_data = &ipa267_spi_gpio_bus1_platform_data,
 	}
