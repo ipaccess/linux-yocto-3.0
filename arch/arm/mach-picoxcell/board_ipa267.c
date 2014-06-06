@@ -134,7 +134,7 @@ struct spi_gpio_platform_data ipa267_spi_gpio_bus1_platform_data = {
 
 static struct platform_device ipa267_spi_gpio_bus1_device = {
 	.name = "spi_gpio",
-	.id = 1,
+	.id = 0,
 	.dev = {
 		.platform_data = &ipa267_spi_gpio_bus1_platform_data,
 	}
@@ -329,7 +329,7 @@ static void ipa267_cfgmux(void)
 #if 0
 		MUXCFG("arm_gpio0",      MUX_ARM), /* ARM_0 : I2C-AUX SCL */
 #endif
-
+#if 0
 		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */ /* needed by ipa267_init_nand */
 		MUXCFG("pai_tx_data1", MUX_PERIPHERAL_PAI), /* PAI Iface */
 		MUXCFG("pai_tx_data2", MUX_PERIPHERAL_PAI), /* PAI Iface */
@@ -365,6 +365,7 @@ static void ipa267_cfgmux(void)
 		MUXCFG("max_tx_ctrl", MUX_ARM),
 		MUXCFG("max_ref_clk", MUX_ARM),
 		MUXCFG("max_trig_clk", MUX_ARM),
+#endif
 	};
 
 	err = mux_configure_table(brd267_cfg, ARRAY_SIZE(brd267_cfg));
@@ -381,12 +382,12 @@ static void __init ipa267_init(void)
 	picoxcell_core_init();
 
 	ipa267_register_uarts();
-#if 0
+#if 1
 	ipa267_cfgmux();
 #endif
 	ipa267_init_nand();
 	ipa267_panic_init();
-#if 0
+#if 1
 	platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
 #endif
 #if 0
