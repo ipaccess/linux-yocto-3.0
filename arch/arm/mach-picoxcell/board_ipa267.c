@@ -304,29 +304,28 @@ static void ipa267_pinmux(void)
 		/*
 		 * SPI-RF (SPI Bus 1)
 		 */
-		MUXCFG("arm8",           MUX_ARM), /* SPI-RF CS0 */
-		MUXCFG("arm9",           MUX_ARM), /* SPI-RF CS1 */
-		MUXCFG("arm10",          MUX_ARM), /* SPI-RF SCK */
-		MUXCFG("arm11",          MUX_ARM), /* SPI-RF MISO */
-		MUXCFG("arm12",          MUX_ARM), /* SPI-RF MOSI */
-		MUXCFG("arm16",          MUX_ARM), /* SPI-RF CS2 */
+		MUXCFG("shd_gpio",       MUX_ARM), /* ARM_8 : SPI-RF CS0 */
+		MUXCFG("boot_mode0",     MUX_ARM), /* ARM_9 : SPI-RF CS1 */
+		MUXCFG("boot_mode1",     MUX_ARM), /* ARM_10: SPI-RF SCK */
+		MUXCFG("sdram_speed_sel",MUX_ARM), /* ARM_11: SPI-RF MISO */
+		MUXCFG("mii_rev_en",     MUX_ARM), /* ARM_12: SPI-RF MOSI */
+		/* MUXCFG("arm16",          MUX_ARM), */ /* ARM_16: SPI-RF CS2 - no such animal?*/
 
 		/*
 		 * SPI-RF (SPI Bus 1)
 		 */
-		MUXCFG("arm36",          MUX_ARM), /* SPI-AUX CS0 */
-		MUXCFG("arm37",          MUX_ARM), /* SPI-AUX CS1 */
-		MUXCFG("arm38",          MUX_ARM), /* SPI-AUX CS2 */
-		MUXCFG("arm39",          MUX_ARM), /* SPI-AUX CS3 */
-		MUXCFG("arm40",          MUX_ARM), /* SPI-AUX SCK */
-		MUXCFG("arm41",          MUX_ARM), /* SPI-AUX MISO */
-		MUXCFG("arm42",          MUX_ARM), /* SPI-AUX MOSI */
+		MUXCFG("decode0",        MUX_ARM), /* ARM_36: SPI-AUX CS0 */
+		MUXCFG("decode1",        MUX_ARM), /* ARM_37: SPI-AUX CS1 */
+		MUXCFG("decode2",        MUX_ARM), /* ARM_38: SPI-AUX CS2 */
+		MUXCFG("decode3",        MUX_ARM), /* ARM_39: SPI-AUX CS3 */
+		MUXCFG("ssi_clk",        MUX_ARM), /* ARM_40: SPI-AUX SCK */
+		MUXCFG("ssi_data_in",    MUX_ARM), /* ARM_41: SPI-AUX MISO */
+		MUXCFG("ssi_data_out",   MUX_ARM), /* ARM_42: SPI-AUX MOSI */
 
 		/*
 		 * I2C-GPIO Bus 0
 		 */
-		MUXCFG("arm0",           MUX_ARM), /* I2C-AUX SCL */
-		MUXCFG("arm7",           MUX_ARM), /* I2C-AUX SDA */
+		MUXCFG("arm_gpio0",      MUX_ARM), /* ARM_0 : I2C-AUX SCL */
 
 		MUXCFG("pai_tx_data0", MUX_PERIPHERAL_PAI), /* PAI Iface */ /* needed by ipa267_init_nand */
 		MUXCFG("pai_tx_data1", MUX_PERIPHERAL_PAI), /* PAI Iface */
@@ -356,7 +355,7 @@ static void ipa267_pinmux(void)
 		MUXCFG("ebi_addr22",   MUX_ARM), /* needed by ipa267_init_nand */
 		MUXCFG("ebi_addr23",   MUX_ARM),
 		MUXCFG("ebi_addr24",   MUX_ARM),
-		MUXCFG("ebi_addr25",   MUX_ARM),
+		MUXCFG("ebi_addr25",   MUX_ARM), /* ARM_7 : I2C-AUX SDA */
 		MUXCFG("ebi_addr26",   MUX_ARM),
 
 		MUXCFG("ebi_clk_pin", MUX_ARM),
