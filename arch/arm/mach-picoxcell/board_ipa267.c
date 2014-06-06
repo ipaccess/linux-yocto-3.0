@@ -315,9 +315,9 @@ static void ipa267_cfgmux(void)
 		/* MUXCFG("arm16",          MUX_ARM), */ /* ARM_16: SPI-RF CS2 - no such animal?*/
 
 		/*
-		 * SPI-RF (SPI Bus 1)
+		 * SPI-AUX (SPI Bus 2)
 		 */
-#if 0
+#if 1
 		MUXCFG("decode0",        MUX_ARM), /* ARM_36: SPI-AUX CS0 */
 		MUXCFG("decode1",        MUX_ARM), /* ARM_37: SPI-AUX CS1 */
 		MUXCFG("decode2",        MUX_ARM), /* ARM_38: SPI-AUX CS2 */
