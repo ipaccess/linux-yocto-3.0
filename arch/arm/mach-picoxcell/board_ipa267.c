@@ -437,9 +437,6 @@ static void __init ipa267_init(void)
 	ipa267_init_nand();
 	ipa267_panic_init();
 #if 1
-	platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
-#endif
-#if 1
 	spi_register_board_info(ipa267_spi_board_info,
 				ARRAY_SIZE(ipa267_spi_board_info));
 #endif
@@ -450,6 +447,13 @@ static void __init ipa267_init(void)
 				ARRAY_SIZE(ipa267_i2c_bus1_devices));
 #endif
 }
+
+static void __init ipa267_late_init(void)
+{
+    // These have to be added after the GPIO lines have been added.
+    platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
+}
+late_initcall(ipa267_late_init);
 
 MACHINE_START(IPA267, "IPA267")
 	.map_io		= picoxcell_map_io,
