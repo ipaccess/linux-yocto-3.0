@@ -103,4 +103,12 @@ config BOARD_IPA267
 	help
           Include support for the ip.access 267 board.
 
+config BOARD_IPA400
+	bool "Support IPA400 Board"
+	default y
+	select PICOXCELL_HAVE_TSU
+	depends on PICOXCELL_PC3X2 || PICOXCELL_PC3X3
+	help
+          Include support for the ip.access 400 board.
+
 endif
