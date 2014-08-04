@@ -168,8 +168,8 @@ static struct i2c_board_info __initdata ipa400_i2c_bus0_devices[] = {
 	{ I2C_BOARD_INFO("lm75",      0x48), }, /* lm75 temperature sensor? */ //TODO two of these
 	{ I2C_BOARD_INFO("lm75",      0x4f), }, /* lm75 temperature sensor? */ //TODO two of these
     //TODO others
-    { I2C_BOARD_INFO("pca9539", 0x74) } //Radio expander control //OK 
-    //{} //TODO humidity sensor HTU21D
+    { I2C_BOARD_INFO("pca9539", 0x74) }, //Radio expander control //OK 
+    { I2C_BOARD_INFO("htu21",0x40)} //TODO humidity sensor HTU21D
     //{} //TODO UBlox GPS receiver. Can be used with either I2C and/or UART to access the  NMEA interface.
 };
 
@@ -294,7 +294,7 @@ static struct spi_board_info ipa400_spi_board_info[] __initdata = {
 		.chip_select	= 2,
 	}
 	/*
-	 * CS3: SPI:
+	 *TODO CS3: SPI: Ethernet switch KSZ8463MLL
 	 */
 #if 0
     ,
@@ -462,9 +462,13 @@ static void __init ipa400_init(void)
 
 static void __init ipa400_late_init(void)
 {
-    printk("%s\n",__func__);
-    // These have to be added after the GPIO lines have been added.
-    platform_add_devices(ipa400_devices, ARRAY_SIZE(ipa400_devices));
+    printk("%s machine_arch_type %d \n",__func__,machine_arch_type);
+    if(machine_is_ipa400())
+    {
+        printk("%s\n",__func__);
+        // These have to be added after the GPIO lines have been added.
+        platform_add_devices(ipa400_devices, ARRAY_SIZE(ipa400_devices));
+    }
 }
 late_initcall(ipa400_late_init);
 

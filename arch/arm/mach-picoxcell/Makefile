@@ -23,5 +23,5 @@ obj-$(CONFIG_PM)		+= pm.o
 obj-$(CONFIG_PICOXCELL_HAVE_TSU)+= tsu.o
 obj-$(CONFIG_PICOXCELL_UICC)	+= device_uicc.o
 obj-$(CONFIG_PC30XX_HW_NAND)	+= device_hw_nand.o
-#obj-$(CONFIG_BOARD_IPA267)	+= board_ipa267.o #remove for now as the MACH has been hijacked
+obj-$(CONFIG_BOARD_IPA267)	+= board_ipa267.o
 obj-$(CONFIG_BOARD_IPA400)	+= board_ipa400.o

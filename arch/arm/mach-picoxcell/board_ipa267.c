@@ -450,8 +450,12 @@ static void __init ipa267_init(void)
 
 static void __init ipa267_late_init(void)
 {
-    // These have to be added after the GPIO lines have been added.
-    platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
+    if(machine_is_ipa267())
+    {
+        printk("%s\n",__func__);
+        // These have to be added after the GPIO lines have been added.
+        platform_add_devices(ipa267_devices, ARRAY_SIZE(ipa267_devices));
+    }
 }
 late_initcall(ipa267_late_init);
 
