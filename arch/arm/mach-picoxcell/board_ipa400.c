@@ -129,7 +129,7 @@ struct spi_gpio_platform_data ipa400_spi_gpio_bus1_platform_data = {
 	.sck            = PC3X3_GPIO_PIN_ARM_10,
 	.miso           = PC3X3_GPIO_PIN_ARM_11,
 	.mosi           = PC3X3_GPIO_PIN_ARM_12,
-	.num_chipselect = 3,
+	.num_chipselect = 3, //TODO should this be 4 (0 to 3)
 };
 
 static struct platform_device ipa400_spi_gpio_bus1_device = {
@@ -159,14 +159,13 @@ static struct platform_device ipa400_i2c_bus0_device = {
 	}
 };
 
-//TODO internal ??
 static struct i2c_board_info __initdata ipa400_i2c_bus0_devices[] = {
 	//{ I2C_BOARD_INFO("max6635",   0x4B), }, /* maxim phy? */
 	//{ I2C_BOARD_INFO("atmel_twi", 0x29), }, /* see at91 stuff, do we have this? */
 	{ I2C_BOARD_INFO("ad7995",    0x28), }, //ADC (power detector)
 	//{ I2C_BOARD_INFO("micrel",    0x5F), }, /* micrel phy I assume? */
-	{ I2C_BOARD_INFO("lm75",      0x48), }, /* lm75 temperature sensor? */ //TODO two of these
-	{ I2C_BOARD_INFO("lm75",      0x4f), }, /* lm75 temperature sensor? */ //TODO two of these
+	{ I2C_BOARD_INFO("lm75",      0x48), }, /* lm75 temperature sensor */
+	{ I2C_BOARD_INFO("lm75",      0x4f), }, /* lm75 temperature sensor */
     //TODO others
     { I2C_BOARD_INFO("pca9539", 0x74) }, //Radio expander control //OK 
     { I2C_BOARD_INFO("htu21",0x40)} //TODO humidity sensor HTU21D
@@ -261,18 +260,20 @@ static struct flash_platform_data ipa400_spi_flash_data = {
 	.name			= "spi-flash",
 	.parts			= ipa400_spi_flash_partitions,
 	.nr_parts		= ARRAY_SIZE(ipa400_spi_flash_partitions),
-	.type			= "m25p40",
+	.type			= "m25p05",
 };
 
 /*
  * SPI Board Data for SPI bus 0 (picoxcell-spi)
  */
+// As SPI bus 1 is bit banged (spi_gpio) controller_data must specify the GPIO used for the
+// chipselect line for that device.
 static struct spi_board_info ipa400_spi_board_info[] __initdata = {
 	/*
 	 * CS0 on picoxcell-spi is the SPI Flash
 	 */
 	{
-		.modalias	= "m25p80",         //TODO this is now m25p05
+		.modalias	= "m25p05",
 		.platform_data	= &ipa400_spi_flash_data,
 		.mode		= SPI_MODE_3,
 		.max_speed_hz	= 2000000,
@@ -307,14 +308,23 @@ static struct spi_board_info ipa400_spi_board_info[] __initdata = {
 		.chip_select	= 3,
 	}
 #endif
+    ,
+    {   // spidev driver allows user space access to bus
+        .modalias = "spidev",
+        .platform_data = NULL,
+        .mode = SPI_MODE_3,
+        .max_speed_hz = 10000, //TODO is this the correct speed
+        .bus_num = 1,
+        .chip_select = 0,
+        .controller_data = (void*) PC3X3_GPIO_PIN_ARM_9,
+    }
 };
 
 //TODO add second spi bus devices
 
 static struct platform_device *ipa400_devices[] __initdata = {
-    &ipa400_spi_gpio_bus1_device,
     &ipa400_i2c_bus0_device,
-    &ipa400_i2c_bus1_device,
+    //&ipa400_i2c_bus1_device, //TODO not used at the moment
 };
 
 /*
@@ -438,6 +448,8 @@ static void ipa400_cfgmux(void)
 
 static void __init ipa400_init(void)
 {
+    int ret;
+
 	picoxcell_tsu_init(20000000);
 	picoxcell_mux_register(ipa400_mux, ARRAY_SIZE(ipa400_mux));
 	picoxcell_core_init();
@@ -451,6 +463,10 @@ static void __init ipa400_init(void)
 #if 1
 	spi_register_board_info(ipa400_spi_board_info,
 				ARRAY_SIZE(ipa400_spi_board_info));
+
+    ret = platform_device_register(&ipa400_spi_gpio_bus1_device);
+    printk("%s device reg spi bus 1 ret %d \n",__func__, ret);
+
 #endif
 #if 1
 	i2c_register_board_info(0, ipa400_i2c_bus0_devices,
@@ -466,7 +482,8 @@ static void __init ipa400_late_init(void)
     if(machine_is_ipa400())
     {
         printk("%s\n",__func__);
-        // These have to be added after the GPIO lines have been added.
+
+        // These have to be added after the GPIO lines have been added by picoxcellgpio
         platform_add_devices(ipa400_devices, ARRAY_SIZE(ipa400_devices));
     }
 }
