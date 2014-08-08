@@ -26,6 +26,7 @@
 #include <linux/spi/spi_gpio.h>
 #include <linux/i2c.h>
 #include <linux/i2c-gpio.h>
+#include <linux/i2c/pca953x.h>
 
 #include <mach/hardware.h>
 #include <mach/picoxcell/axi2cfg.h>
@@ -159,6 +160,11 @@ static struct platform_device ipa400_i2c_bus0_device = {
 	}
 };
 
+static struct pca953x_platform_data io_expander_data =
+{
+    .gpio_base = 200
+};
+
 static struct i2c_board_info __initdata ipa400_i2c_bus0_devices[] = {
 	//{ I2C_BOARD_INFO("max6635",   0x4B), }, /* maxim phy? */
 	//{ I2C_BOARD_INFO("atmel_twi", 0x29), }, /* see at91 stuff, do we have this? */
@@ -167,9 +173,15 @@ static struct i2c_board_info __initdata ipa400_i2c_bus0_devices[] = {
 	{ I2C_BOARD_INFO("lm75",      0x48), }, /* lm75 temperature sensor */
 	{ I2C_BOARD_INFO("lm75",      0x4f), }, /* lm75 temperature sensor */
     //TODO others
-    { I2C_BOARD_INFO("pca9539", 0x74) }, //Radio expander control //OK 
-    { I2C_BOARD_INFO("htu21",0x40)} //TODO humidity sensor HTU21D
+    { I2C_BOARD_INFO("htu21",0x40)}, //TODO humidity sensor HTU21D
     //{} //TODO UBlox GPS receiver. Can be used with either I2C and/or UART to access the  NMEA interface.
+    
+    // Radio io-expander control
+    {
+        .type = "pca9539",
+        .addr = 0x74,
+        .platform_data = &io_expander_data,
+    }
 };
 
 static struct i2c_gpio_platform_data ipa400_i2c_bus1_data = {
@@ -446,6 +458,28 @@ static void ipa400_cfgmux(void)
 	}
 }
 
+static void reset_lines_init(void)
+{
+    int err;
+
+    err = gpio_request(50, "io_expander_reset");
+    if (err)
+    {
+        printk(KERN_ALERT "%s failed io_expander_reset gpio request %d\n", __func__, err);
+        return;
+    }
+
+    // Take the io expander out of reset
+    err = gpio_direction_output(50, 1);
+    if (err)
+    {
+        printk(KERN_ALERT "%s failed to set dir of io_expander_reset %d\n", __func__, err);
+        gpio_free(50);
+        return;
+    }
+
+}
+
 static void __init ipa400_init(void)
 {
     int ret;
@@ -469,8 +503,6 @@ static void __init ipa400_init(void)
 
 #endif
 #if 1
-	i2c_register_board_info(0, ipa400_i2c_bus0_devices,
-				ARRAY_SIZE(ipa400_i2c_bus0_devices));
 	//i2c_register_board_info(1, ipa400_i2c_bus1_devices,
 	//			ARRAY_SIZE(ipa400_i2c_bus1_devices));
 #endif
@@ -482,6 +514,10 @@ static void __init ipa400_late_init(void)
     if(machine_is_ipa400())
     {
         printk("%s\n",__func__);
+
+        // These have to be added after the GPIO lines have been added by picoxcellgpio
+        reset_lines_init();
+        i2c_register_board_info(0, ipa400_i2c_bus0_devices, ARRAY_SIZE(ipa400_i2c_bus0_devices));
 
         // These have to be added after the GPIO lines have been added by picoxcellgpio
         platform_add_devices(ipa400_devices, ARRAY_SIZE(ipa400_devices));
