@@ -192,8 +192,19 @@ static struct i2c_driver htu21_driver = {
 	.id_table    = htu21_id,
 };
 
-module_i2c_driver(htu21_driver);
+static int __init sensors_htu21_init(void)
+{
+    return i2c_add_driver(&htu21_driver);
+}
+
+static void __exit sensors_htu21_exit(void)
+{
+    i2c_del_driver(&htu21_driver);
+}
 
 MODULE_AUTHOR("William Markezana <william.markezana@meas-spec.com>");
 MODULE_DESCRIPTION("MEAS HTU21D humidity and temperature sensor driver");
 MODULE_LICENSE("GPL");
+
+module_init(sensors_htu21_init);
+module_exit(sensors_htu21_exit);
