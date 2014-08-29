@@ -247,24 +247,18 @@ static void ipa400_register_uarts(void)
 }
 
 /*
- * PC7302 platforms have had a variety of different SPI Flash devices fitted.
+ * We have a 64KiB SPI Flash device fitted.  We create a single
+ * partition called 'FSBL0' on this device.
  *
- * Spansion S25FL128P (128 Mbit) devices
- * Numonyx M25P05 (512 Kbit) devices
- *
- * This setup should be fine for all of them with the proviso that the
- * partition called "SPI: Data" may not actually be available for use.
+ * If we ever get a larger NOR device we can think about changing
+ * this, but since we're only using the first 16KiB of the device
+ * there's really no reason to change things.
  */
 static struct mtd_partition ipa400_spi_flash_partitions[] = {
 	{
-		.name		= "SPI: First Stage Boot Loader",
+		.name		= "FSBL0",
 		.size		= SZ_64K,
 		.offset		= 0,
-	},
-	{
-		.name		= "SPI: Data",
-		.size		= MTDPART_SIZ_FULL,
-		.offset		= MTDPART_OFS_APPEND,
 	},
 };
 
