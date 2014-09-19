@@ -295,7 +295,7 @@ static struct spi_board_info ipa400_spi_board_info[] __initdata = {
 	{
 		.modalias	= "dac7512",        //TODO OK
 		.platform_data	= NULL,
-		.mode		= SPI_MODE_1,  /* Idle clock is low.  Latch on falling edge (second edge) */
+		.mode		= SPI_MODE_1,
 		.max_speed_hz	= 10000, /* 10kHz (not 20MHz, we'd get only 80 CPU cycles between writes) */
 		.bus_num	= 0,
 		.chip_select	= 2,
@@ -387,14 +387,19 @@ static void ipa400_cfgmux(void)
 		MUXCFG("mii_speed_sel",  MUX_ARM), /* ARM_14: SPI-RF CS2 / fast GPIO */
 		MUXCFG("arm_gpio16",     MUX_ARM), /* ARM_16: SPI-RF CS2 */
 
-#if 0
 		/*
-		 * SPI-AUX (SPI Bus 2) - this interferes with the SPI flash - it's quite likely the decode pins and wonky
+		 * SPI - Designware driver works better waggling the CS lines itself rather than
+		 *       letting the SPI controller do it.
 		 */
 		MUXCFG("decode0",        MUX_ARM), /* ARM_36: SPI-AUX CS0 */
 		MUXCFG("decode1",        MUX_ARM), /* ARM_37: SPI-AUX CS1 */
 		MUXCFG("decode2",        MUX_ARM), /* ARM_38: SPI-AUX CS2 */
 		MUXCFG("decode3",        MUX_ARM), /* ARM_39: SPI-AUX CS3 */
+
+		#if 0
+		/*
+		 * SPI-AUX (SPI Bus 2) - this interferes with the SPI flash - it's quite likely the decode pins and wonky
+		 */
 		MUXCFG("ssi_clk",        MUX_ARM), /* ARM_40: SPI-AUX SCK */
 		MUXCFG("ssi_data_in",    MUX_ARM), /* ARM_41: SPI-AUX MISO */
 		MUXCFG("ssi_data_out",   MUX_ARM), /* ARM_42: SPI-AUX MOSI */

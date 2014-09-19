@@ -16,6 +16,7 @@
 #include <linux/picochip/picoif.h>
 #include <mach/hardware.h>
 #include <mach/irqs.h>
+#include <mach/gpio.h>
 
 #include <asm/pmu.h>
 
@@ -156,10 +157,15 @@ static struct resource spi_resources[] = {
 		.end		= IRQ_SSI,
 		.flags		= IORESOURCE_IRQ,
 	},
+	{
+		.start		= PC3X3_GPIO_PIN_ARM_36,
+		.end		= PC3X3_GPIO_PIN_ARM_39,
+		.flags		= IORESOURCE_IO,
+	},
 };
 
 static struct platform_device spi_device = {
-	.name			= "picoxcell-spi",
+	.name			= "dw_spi_mmio",
 	.id			= 0,
 	.resource		= spi_resources,
 	.num_resources		= ARRAY_SIZE(spi_resources),

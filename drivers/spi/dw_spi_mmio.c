@@ -15,6 +15,7 @@
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/scatterlist.h>
+#include <linux/gpio.h>
 
 #include "dw_spi.h"
 
@@ -29,7 +30,7 @@ static int __devinit dw_spi_mmio_probe(struct platform_device *pdev)
 {
 	struct dw_spi_mmio *dwsmmio;
 	struct dw_spi *dws;
-	struct resource *mem, *ioarea;
+	struct resource *mem, *ioarea, *csgpio;
 	int ret;
 
 	dwsmmio = kzalloc(sizeof(struct dw_spi_mmio), GFP_KERNEL);
@@ -81,6 +82,28 @@ static int __devinit dw_spi_mmio_probe(struct platform_device *pdev)
 	dws->bus_num = 0;
 	dws->num_cs = 4;
 	dws->max_freq = clk_get_rate(dwsmmio->clk);
+
+	csgpio = platform_get_resource(pdev, IORESOURCE_IO, 0);
+	if (!csgpio)
+	{
+		dws->cs0 = -1;
+	}
+	else
+	{
+		int i;
+
+		dws->cs0 = csgpio->start;
+		for (i = 0; i < dws->num_cs; i++)
+		{
+			ret = gpio_request(dws->cs0 + i, dev_name(&pdev->dev));
+			if (ret)
+			{
+				printk("spi-dw: gpio_request failed.\n");
+				dws->cs0 = -1;
+				break;
+			}
+		}
+	}
 
 	ret = dw_spi_add_host(dws);
 	if (ret)

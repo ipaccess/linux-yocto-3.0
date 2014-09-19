@@ -59,7 +59,7 @@ static int __devinit dac7512_probe(struct spi_device *spi)
 	int ret;
 
 	spi->bits_per_word = 8;
-	spi->mode = SPI_MODE_0;
+	spi->mode = SPI_MODE_1;
 	ret = spi_setup(spi);
 	if (ret < 0)
 		return ret;

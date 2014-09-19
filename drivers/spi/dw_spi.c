@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
+#include <linux/gpio.h>
 
 #include "dw_spi.h"
 
@@ -238,8 +239,9 @@ static void *next_transfer(struct dw_spi *dws)
 					struct spi_transfer,
 					transfer_list);
 		return RUNNING_STATE;
-	} else
+	} else {
 		return DONE_STATE;
+	}
 }
 
 /*
@@ -285,8 +287,8 @@ static void giveback(struct dw_spi *dws)
 					struct spi_transfer,
 					transfer_list);
 
-	if (!last_transfer->cs_change && dws->cs_control)
-		dws->cs_control(MRST_SPI_DEASSERT);
+	if (!last_transfer->cs_change)
+		spi_chip_sel(dws, msg->spi->chip_select, 0);
 
 	msg->state = NULL;
 	if (msg->complete)
@@ -527,7 +529,7 @@ static void pump_transfers(unsigned long data)
 			dw_writew(dws, ctrl0, cr0);
 
 		spi_set_clk(dws, clk_div ? clk_div : chip->clk_div);
-		spi_chip_sel(dws, spi->chip_select);
+		spi_chip_sel(dws, spi->chip_select, 1);
 
 		/* Set the interrupt mask, for poll mode just disable all int */
 		spi_mask_intr(dws, 0xff);
@@ -633,6 +635,9 @@ static int dw_spi_setup(struct spi_device *spi)
 {
 	struct dw_spi_chip *chip_info = NULL;
 	struct chip_data *chip;
+	struct dw_spi *dws = spi_master_get_devdata(spi->master);
+	int gpiocs;
+	int ret;
 
 	if (spi->bits_per_word != 8 && spi->bits_per_word != 16)
 		return -EINVAL;
@@ -690,6 +695,15 @@ static int dw_spi_setup(struct spi_device *spi)
 			| (chip->type << SPI_FRF_OFFSET)
 			| (spi->mode  << SPI_MODE_OFFSET)
 			| (chip->tmode << SPI_TMOD_OFFSET);
+
+	gpiocs = dws->cs0 + spi->chip_select;
+	if ( (dws->cs0 > 0) && gpio_is_valid(gpiocs) ){
+		ret = gpio_direction_output(gpiocs, 1);
+		if (ret) {
+			dev_err(&spi->dev, "Cannot set GPIO direction for chip select.\n");
+			return ret;
+		}
+	}
 
 	spi_set_ctldata(spi, chip);
 	return 0;

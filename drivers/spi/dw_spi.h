@@ -136,6 +136,7 @@ struct dw_spi {
 	u8			n_bytes;	/* current is a 1/2 bytes op */
 	u8			max_bits_per_word;	/* maxim is 16b */
 	u32			dma_width;
+	int         cs0; /* -1 let controller handle CS, else gpio number of cs0 */
 	int			cs_change;
 	irqreturn_t		(*transfer_handler)(struct dw_spi *dws);
 	void			(*cs_control)(u32 command);
@@ -179,15 +180,18 @@ static inline void spi_set_clk(struct dw_spi *dws, u16 div)
 	dw_writel(dws, baudr, div);
 }
 
-static inline void spi_chip_sel(struct dw_spi *dws, u16 cs)
+static inline void spi_chip_sel(struct dw_spi *dws, u16 cs, int active)
 {
-	if (cs > dws->num_cs)
-		return;
+	int gpio_val = active ? 0 : 1;
+	int gpio_cs  = dws->cs0 + cs;
 
 	if (dws->cs_control)
-		dws->cs_control(1);
+		dws->cs_control(active);
+	if ( (dws->cs0 > 0) && gpio_is_valid(gpio_cs))
+		gpio_set_value(gpio_cs, gpio_val);
 
-	dw_writel(dws, ser, 1 << cs);
+	if (active)
+		dw_writel(dws, ser, 1 << cs);
 }
 
 /* Disable IRQ bits */
