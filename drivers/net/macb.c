@@ -6,6 +6,15 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ *
+ * Support for Micrel KSZ8463 ethernet switch.
+ *
+ * Copyright (c) 2010-2012 Micrel, Inc.
+ *
+ * Copyright 2009 Simtec Electronics
+ *	http://www.simtec.co.uk/
+ *	Ben Dooks <ben@simtec.co.uk>
+ *
  */
 #define pr_fmt(fmt) "macb: " fmt
 #include <linux/clk.h>
@@ -51,6 +60,58 @@
 
 #define MACB_RX_INT_FLAGS	(MACB_BIT(RCOMP) | MACB_BIT(RXUBR)	\
 				 | MACB_BIT(ISR_ROVR))
+
+typedef enum {MII_PHY, SPI_PHY} t_phy_bus;
+
+#if defined(CONFIG_MICREL_KSZ8463)
+
+static int micrel_sw_check(void)
+{
+	int phy_addr;
+	int phy_mode;
+	char phy_id[MII_BUS_ID_SIZE];
+	char bus_id[MII_BUS_ID_SIZE];
+	struct net_device netdev;
+	struct phy_device *phydev;
+	int ret = 0;
+
+	/* Check whether MII switch exists. */
+	phy_addr = 0;
+	phy_mode = PHY_INTERFACE_MODE_MII;
+	snprintf(bus_id, MII_BUS_ID_SIZE, "spi_mii.%d", 0);
+	snprintf(phy_id, MII_BUS_ID_SIZE, PHY_ID_FMT, bus_id, phy_addr);
+	phydev = phy_attach(&netdev, phy_id, 0, phy_mode);
+	if (!IS_ERR(phydev)) {
+		ret = 1;
+		phy_detach(phydev);
+	}
+	return ret;
+}
+
+static void sw_adjust_link(struct net_device *netdev)
+{
+}
+
+static struct phy_device *micrel_sw_attach(struct net_device *netdev)
+{
+	int phy_addr;
+	int phy_mode;
+	char phy_id[MII_BUS_ID_SIZE];
+	char bus_id[MII_BUS_ID_SIZE];
+	struct phy_device *phydev;
+
+	phy_addr = 0;
+	phy_mode = PHY_INTERFACE_MODE_MII;
+	snprintf(bus_id, MII_BUS_ID_SIZE, "spi_mii.%d", 0);
+	snprintf(phy_id, MII_BUS_ID_SIZE, PHY_ID_FMT, bus_id, phy_addr);
+	phydev = phy_attach(netdev, phy_id, 0, phy_mode);
+	if (!IS_ERR(phydev)) {
+		phydev->adjust_link = sw_adjust_link;
+		return phydev;
+	}
+	return NULL;
+}
+#endif
 
 static void __macb_set_hwaddr(struct macb *bp)
 {
@@ -185,31 +246,56 @@ static void macb_handle_link_change(struct net_device *dev)
 }
 
 /* based on au1000_eth. c*/
-static int macb_mii_probe(struct net_device *dev)
+static int macb_mii_probe(struct net_device *dev, t_phy_bus phy_bus)
 {
 	struct macb *bp = netdev_priv(dev);
 	struct phy_device *phydev;
 	struct macb_platform_data *pdata;
 	int ret;
 
-	phydev = phy_find_first(bp->mii_bus);
-	if (!phydev) {
-		netdev_err(dev, "no PHY found\n");
+	pdata = bp->pdev->dev.platform_data;
+
+	if (phy_bus == MII_PHY)
+	{
+		phydev = phy_find_first(bp->mii_bus);
+		if (!phydev) {
+			netdev_err(dev, "No PHY found on MDIO bus\n");
+			return -1;
+		}
+
+		/* attach the mac to the phy */
+		ret = phy_connect_direct(dev, phydev, &macb_handle_link_change, 0,
+					 pdata && pdata->is_rmii ?
+					 PHY_INTERFACE_MODE_RMII :
+					 PHY_INTERFACE_MODE_MII);
+		if (ret) {
+			netdev_err(dev, "Could not attach to PHY on MDIO bus\n");
+			return ret;
+		}
+	}
+#if defined(CONFIG_MICREL_KSZ8463)
+	else /* SPI_PHY */
+	{
+		phydev = micrel_sw_attach(dev);
+		if (!phydev)
+		{
+			netdev_err(dev, "No PHY found on SPI bus\n");
+			return -1;
+		}
+		else
+		{
+			phy_start_machine(phydev, &macb_handle_link_change);
+		}
+	}
+#else
+	else
+	{
+		netdev_err(dev, "SPI_PHY not supported\n");
 		return -1;
 	}
+#endif
 
-	pdata = bp->pdev->dev.platform_data;
 	/* TODO : add pin_irq */
-
-	/* attach the mac to the phy */
-	ret = phy_connect_direct(dev, phydev, &macb_handle_link_change, 0,
-				 pdata && pdata->is_rmii ?
-				 PHY_INTERFACE_MODE_RMII :
-				 PHY_INTERFACE_MODE_MII);
-	if (ret) {
-		netdev_err(dev, "Could not attach to PHY\n");
-		return ret;
-	}
 
 	/* mask with MAC supported features */
 	phydev->supported &= PHY_BASIC_FEATURES;
@@ -264,7 +350,7 @@ static int macb_mii_init(struct macb *bp)
 	if (mdiobus_register(bp->mii_bus))
 		goto err_out_free_mdio_irq;
 
-	if (macb_mii_probe(bp->dev) != 0) {
+	if (macb_mii_probe(bp->dev, MII_PHY) != 0) {
 		goto err_out_unregister_bus;
 	}
 
@@ -277,6 +363,19 @@ err_out_free_mdio_irq:
 err_out_free_mdiobus:
 	mdiobus_free(bp->mii_bus);
 err_out:
+
+#if defined(CONFIG_MICREL_KSZ8463)
+/* Didn't find a PHY on the MAC's mdio bus, so look for Micrel PHYs on the SPI bus */
+
+    if (micrel_sw_check())
+    {
+    	if (macb_mii_probe(bp->dev, SPI_PHY) == 0) {
+    	    bp->mii_bus = bp->phy_dev->bus;
+    		return 0;
+    	}
+    }
+
+#endif
 	return err;
 }
 
@@ -881,7 +980,7 @@ static void macb_reset_hw(struct macb *bp)
 	 * Disable RX and TX (XXX: Should we halt the transmission
 	 * more gracefully?)
 	 */
-	macb_writel(bp, NCR, 0);
+	macb_writel(bp, NCR, macb_readl(bp, NCR) & ~(MACB_BIT(RE) | MACB_BIT(TE)) );
 
 	/* Clear the stats registers (XXX: Update stats first?) */
 	macb_writel(bp, NCR, MACB_BIT(CLRSTAT));

@@ -287,8 +287,16 @@ static struct spi_board_info ipa400_spi_board_info[] __initdata = {
 		.chip_select	= 0,
 	},
 	/*
-	 * CS1: EBI: Debug interface
+	 * CS1: SD card
 	 */
+	{
+		.modalias	= "mmc_spi",
+		.platform_data	= NULL,
+		.mode		= SPI_MODE_0,
+		.max_speed_hz	= 2000000,
+		.bus_num	= 0,
+		.chip_select	= 1,
+	},
 	/*
 	 * CS2: SPI: Reference Clock Control DAC
 	 */
@@ -299,22 +307,18 @@ static struct spi_board_info ipa400_spi_board_info[] __initdata = {
 		.max_speed_hz	= 10000, /* 10kHz (not 20MHz, we'd get only 80 CPU cycles between writes) */
 		.bus_num	= 0,
 		.chip_select	= 2,
-	}
+	},
 	/*
-	 *TODO CS3: SPI: Ethernet switch KSZ8463MLL
+	 * CS3: SPI: Ethernet switch KSZ8463MLL
 	 */
-#if 0
-    ,
 	{
-		.modalias	= "max6662", //TODO now ethernet switch ksz8463
+		.modalias	= "ksz8463",
 		.platform_data	= NULL,
-		.mode		= SPI_3WIRE | SPI_MODE_3,  /* Idle clock is high.  Latch on rising edge (second edge) */
-		.max_speed_hz	= 10000, /* 10kHz */
+		.mode		= SPI_MODE_0,  /* Idle clock is low.  Latch on rising edge (second edge) */
+		.max_speed_hz	= 1000000, /* 1MHz */
 		.bus_num	= 0,
 		.chip_select	= 3,
-	}
-#endif
-    ,
+	},
     {   // spidev driver allows user space access to bus
         .modalias = "spidev",
         .platform_data = NULL,
