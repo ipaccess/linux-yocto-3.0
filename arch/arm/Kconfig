@@ -605,13 +605,14 @@ config ARCH_PNX4008
 	help
 	  This enables support for Philips PNX4008 mobile platform.
 
+# picoXcell supports TCM, but we repurpose it for TrustZone
+#	select HAVE_TCM
 config ARCH_PICOXCELL
 	bool "Picochip picoXcell"
 	select ARM_VIC
 	select GENERIC_CLOCKEVENTS
 	select HAVE_SCHED_CLOCK
 	select CPU_V6K
-	select HAVE_TCM
 	select CLKDEV_LOOKUP
 	select ARCH_REQUIRE_GPIOLIB
 	select GENERIC_GPIO
