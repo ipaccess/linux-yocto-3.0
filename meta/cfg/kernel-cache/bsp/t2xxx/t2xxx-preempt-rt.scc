@@ -1,0 +1,8 @@
+define KMACHINE t2xxx
+define KTYPE preempt-rt
+define KARCH arm
+
+include ktypes/preempt-rt
+branch t2xxx
+
+include t2xxx.scc

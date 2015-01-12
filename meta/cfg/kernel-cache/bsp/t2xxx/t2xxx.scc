@@ -1,0 +1,4 @@
+kconf hardware t2xxx.cfg
+
+include features/profiling/profiling.scc
+include features/latencytop/latencytop.scc
