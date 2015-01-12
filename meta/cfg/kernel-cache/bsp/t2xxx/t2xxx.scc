@@ -2,3 +2,6 @@ kconf hardware t2xxx.cfg
 
 include features/profiling/profiling.scc
 include features/latencytop/latencytop.scc
+
+patch t2xxx-ocf.patch
+patch t2xxx-bsp.patch
