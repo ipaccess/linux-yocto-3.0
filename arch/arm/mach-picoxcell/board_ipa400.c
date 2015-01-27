@@ -33,6 +33,7 @@
 #include <asm/leds.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <linux/ext_wdt.h>
 
 #include "mux.h"
 #include "picoxcell_core.h"
@@ -141,6 +142,22 @@ static struct platform_device ipa400_spi_gpio_bus1_device = {
 	}
 };
 
+static struct ext_wdt_platform_data ext_wdt_data = {
+	 .wdt_enable_gpio = 43 ,
+	 .wdt_tick_gpio = 53 ,
+	 .interval = 5 * HZ,
+	 .first_interval = 0,
+};
+
+
+static struct platform_device ext_wdt_device = {
+	.name			= "ext-wdt",
+	.id			= -1,
+        .dev  = 
+                {
+                   .platform_data = &ext_wdt_data
+                }
+};
 
 /*
  * We have two i2c busses, and both are driven using GPIO.
@@ -504,6 +521,8 @@ static void __init ipa400_init(void)
     ret = platform_device_register(&ipa400_spi_gpio_bus1_device);
     printk("%s device reg spi bus 1 ret %d \n",__func__, ret);
 
+    ret = platform_device_register(&ext_wdt_device);
+    printk("%s device reg ext watchdog ret %d \n",__func__, ret);
 #endif
 #if 1
 	//i2c_register_board_info(1, ipa400_i2c_bus1_devices,
