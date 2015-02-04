@@ -34,6 +34,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <linux/ext_wdt.h>
+#include <linux/dma-mapping.h>
 
 #include "mux.h"
 #include "picoxcell_core.h"
@@ -349,8 +350,36 @@ static struct spi_board_info ipa400_spi_board_info[] __initdata = {
 
 //TODO add second spi bus devices
 
+struct resource ipa400_picoxcell_l2_res[] = {
+	{
+		.start          = PICOXCELL_CIPHER_BASE,
+		.end            = PICOXCELL_CIPHER_BASE + 0xFFFF,
+		.flags          = IORESOURCE_MEM,
+	},
+	{
+		.start          = IRQ_AES,
+		.end            = IRQ_AES,
+		.flags          = IORESOURCE_IRQ,
+	}
+};
+
+static u64 picoxcell_l2_dmamask = DMA_BIT_MASK(32);
+static struct platform_device ipa400_picoxcell_l2_device = {
+	.name                   = "l2_engine",
+	.id                     = -1,
+	.num_resources          = ARRAY_SIZE(ipa400_picoxcell_l2_res),
+	.resource               = &ipa400_picoxcell_l2_res,
+	.dev                    = {
+		.dma_mask               = &picoxcell_l2_dmamask,
+		.coherent_dma_mask      = DMA_BIT_MASK(32),
+	},
+
+};
+
+
 static struct platform_device *ipa400_devices[] __initdata = {
     &ipa400_i2c_bus0_device,
+    &ipa400_picoxcell_l2_device,
     //&ipa400_i2c_bus1_device, //TODO not used at the moment
 };
 
@@ -529,6 +558,7 @@ static void __init ipa400_init(void)
 	//			ARRAY_SIZE(ipa400_i2c_bus1_devices));
 #endif
 }
+
 
 static void __init ipa400_late_init(void)
 {

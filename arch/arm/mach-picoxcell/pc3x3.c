@@ -603,8 +603,9 @@ static void pc3x3_add_spaccs(void)
 {
 	picoxcell_add_spacc("picoxcell-ipsec", PICOXCELL_IPSEC_BASE,
 			    IRQ_IPSEC, -1);
-	picoxcell_add_spacc("picoxcell-l2", PICOXCELL_CIPHER_BASE,
-			    IRQ_AES, -1);
+	/*picoxcell_add_spacc("picoxcell-l2", PICOXCELL_CIPHER_BASE,
+			    IRQ_AES, -1);*/
+	/*Adding this device with different name from board specific files*/
 }
 
 static void pc3x3_add_trng(void)
