@@ -516,6 +516,17 @@ config NETFILTER_XT_TARGET_MARK
 	(e.g. when running oldconfig). It selects
 	CONFIG_NETFILTER_XT_MARK (combined mark/MARK module).
 
+config NETFILTER_XT_TARGET_IMQ
+        tristate '"IMQ" target support'
+       depends on NETFILTER_XTABLES
+       depends on IP_NF_MANGLE || IP6_NF_MANGLE
+       select IMQ
+       default m if NETFILTER_ADVANCED=n
+        help
+          This option adds a `IMQ' target which is used to specify if and
+          to which imq device packets should get enqueued/dequeued.
+          To compile it as a module, choose M here.  If unsure, say N.
+
 config NETFILTER_XT_TARGET_NFLOG
 	tristate '"NFLOG" target support'
 	default m if NETFILTER_ADVANCED=n

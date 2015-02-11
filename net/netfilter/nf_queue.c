@@ -22,6 +22,26 @@ static const struct nf_queue_handler __rcu *queue_handler[NFPROTO_NUMPROTO] __re
 
 static DEFINE_MUTEX(queue_handler_mutex);
 
+
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+static const struct nf_queue_handler *queue_imq_handler;
+
+void nf_register_queue_imq_handler(const struct nf_queue_handler *qh)
+{
+	mutex_lock(&queue_handler_mutex);
+	rcu_assign_pointer(queue_imq_handler, qh);
+	mutex_unlock(&queue_handler_mutex);
+}
+EXPORT_SYMBOL(nf_register_queue_imq_handler);
+
+void nf_unregister_queue_imq_handler(void)
+{
+	mutex_lock(&queue_handler_mutex);
+	rcu_assign_pointer(queue_imq_handler, NULL);
+	mutex_unlock(&queue_handler_mutex);
+}
+EXPORT_SYMBOL(nf_unregister_queue_imq_handler);
+#endif
 /* return EBUSY when somebody else is registered, return EEXIST if the
  * same handler is registered, return 0 in case of success. */
 int nf_register_queue_handler(u_int8_t pf, const struct nf_queue_handler *qh)
@@ -92,7 +112,7 @@ void nf_unregister_queue_handlers(const struct nf_queue_handler *qh)
 }
 EXPORT_SYMBOL_GPL(nf_unregister_queue_handlers);
 
-static void nf_queue_entry_release_refs(struct nf_queue_entry *entry)
+void nf_queue_entry_release_refs(struct nf_queue_entry *entry)
 {
 	/* Release those devices we held, or Alexey will kill me. */
 	if (entry->indev)
@@ -112,6 +132,7 @@ static void nf_queue_entry_release_refs(struct nf_queue_entry *entry)
 	/* Drop reference to owner of hook which queued us. */
 	module_put(entry->elem->owner);
 }
+EXPORT_SYMBOL_GPL(nf_queue_entry_release_refs);
 
 /*
  * Any packet that leaves via this function must come back
@@ -133,12 +154,27 @@ static int __nf_queue(struct sk_buff *skb,
 #endif
 	const struct nf_afinfo *afinfo;
 	const struct nf_queue_handler *qh;
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	const struct nf_queue_handler *qih = NULL;
+#endif
 
 	/* QUEUE == DROP if no one is waiting, to be safe. */
 	rcu_read_lock();
 
 	qh = rcu_dereference(queue_handler[pf]);
-	if (!qh) {
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+	if (pf == PF_INET || pf == PF_INET6)
+#else
+	if (pf == PF_INET)
+#endif
+		qih = rcu_dereference(queue_imq_handler);
+
+	if (!qh && !qih)
+#else /* !IMQ */
+	if (!qh)
+#endif
+	{
 		status = -ESRCH;
 		goto err_unlock;
 	}
@@ -161,6 +197,10 @@ static int __nf_queue(struct sk_buff *skb,
 		.indev	= indev,
 		.outdev	= outdev,
 		.okfn	= okfn,
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+		.next_outfn = qh ? qh->outfn : NULL,
+		.next_queuenum = queuenum,
+#endif
 	};
 
 	/* If it's going away, ignore hook. */
@@ -185,8 +225,18 @@ static int __nf_queue(struct sk_buff *skb,
 #endif
 	skb_dst_force(skb);
 	afinfo->saveroute(skb, entry);
+
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+	if (qih) {
+		status = qih->outfn(entry, queuenum);
+		goto imq_skip_queue;
+	}
+#endif
 	status = qh->outfn(entry, queuenum);
 
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+imq_skip_queue:
+#endif
 	rcu_read_unlock();
 
 	if (status < 0) {

@@ -258,6 +258,23 @@ struct xt_mtdtor_param {
 };
 
 /**
+ * struct xt_target_param - parameters for target extensions' target functions
+ *
+ * @hooknum:	hook through which this target was invoked
+ * @target:	struct xt_target through which this function was invoked
+ * @targinfo:	per-target data
+ *
+ * Other fields see above.
+ */
+struct xt_target_param {
+	const struct net_device *in, *out;
+	const struct xt_target *target;
+	const void *targinfo;
+	unsigned int hooknum;
+	u_int8_t family;
+};
+
+/**
  * struct xt_tgchk_param - parameters for target extensions'
  * checkentry functions
  *
