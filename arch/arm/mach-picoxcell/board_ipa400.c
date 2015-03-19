@@ -203,8 +203,8 @@ static struct i2c_board_info __initdata ipa400_i2c_bus0_devices[] = {
 };
 
 static struct i2c_gpio_platform_data ipa400_i2c_bus1_data = {
-	.sda_pin = PC3X3_GPIO_PIN_ARM_44,
-	.scl_pin = PC3X3_GPIO_PIN_ARM_43,
+	.sda_pin = PC3X3_GPIO_PIN_ARM_46,
+	.scl_pin = PC3X3_GPIO_PIN_ARM_45,
 	.udelay  = 2, /* Between 100kHz and 400kHz, nominally 250kHz */
 	.timeout = 100
 };
@@ -217,11 +217,10 @@ static struct platform_device ipa400_i2c_bus1_device = {
 	}
 };
 
-//TODO radio aux connector is the only thing on this bus.
-//static struct i2c_board_info __initdata ipa400_i2c_bus1_devices[] = {
+static struct i2c_board_info __initdata ipa400_i2c_bus1_devices[] = {
 //	{ I2C_BOARD_INFO("at91_i2c",  0x49), },
-//	{ I2C_BOARD_INFO("ipa2g",     0x48), },
-//};
+	{ I2C_BOARD_INFO("lm75",     0x48), },  /* lm75 temperature sensor */
+};
 
 static void ipa400_init_nand(void)
 {
@@ -379,6 +378,7 @@ static struct platform_device ipa400_picoxcell_l2_device = {
 
 static struct platform_device *ipa400_devices[] __initdata = {
     &ipa400_i2c_bus0_device,
+    &ipa400_i2c_bus1_device,
     &ipa400_picoxcell_l2_device,
     //&ipa400_i2c_bus1_device, //TODO not used at the moment
 };
@@ -570,6 +570,7 @@ static void __init ipa400_late_init(void)
         // These have to be added after the GPIO lines have been added by picoxcellgpio
         reset_lines_init();
         i2c_register_board_info(0, ipa400_i2c_bus0_devices, ARRAY_SIZE(ipa400_i2c_bus0_devices));
+        i2c_register_board_info(1, ipa400_i2c_bus1_devices, ARRAY_SIZE(ipa400_i2c_bus1_devices));
 
         // These have to be added after the GPIO lines have been added by picoxcellgpio
         platform_add_devices(ipa400_devices, ARRAY_SIZE(ipa400_devices));
