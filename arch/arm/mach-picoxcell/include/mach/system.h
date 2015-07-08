@@ -21,6 +21,7 @@
 #include <mach/io.h>
 #include <mach/picoxcell/picoxcell.h>
 #include <mach/picoxcell/wdog.h>
+#include <mach/picoxcell/gpio.h>
 
 static inline void arch_idle(void)
 {
@@ -33,11 +34,34 @@ static inline void arch_idle(void)
 
 static inline void arch_reset(int mode, const char *cmd)
 {
-	/*
-	 * Set the watchdog to expire as soon as possible and reset the
-	 * system.
+    unsigned int temp;
+    
+    /*
+     *  First attempt a reset by driving GPIO 17 low...
+     */
+    printk("%s: Performing hard reset of ipa400 board\n", __func__);
+    
+    /* Hard reset involves setting GPIO 17 (bit 9 of GPIO port B) 
+     *       as an output and then setting its value to 0 */
+    temp = __raw_readl(IO_ADDRESS(PICOXCELL_GPIO_BASE +
+    GPIO_SW_PORT_B_DDR_REG_OFFSET));
+    __raw_writel((temp | 0x00000200), IO_ADDRESS(PICOXCELL_GPIO_BASE +
+    GPIO_SW_PORT_B_DDR_REG_OFFSET));
+    
+    temp = __raw_readl(IO_ADDRESS(PICOXCELL_GPIO_BASE +
+    GPIO_SW_PORT_B_DR_REG_OFFSET));
+    __raw_writel((temp & 0xFFFFFDFF), IO_ADDRESS(PICOXCELL_GPIO_BASE +
+    GPIO_SW_PORT_B_DR_REG_OFFSET));
+    
+    /* Give it chance to reset. */
+    mdelay(500);
+    
+    /*
+	 * If that didn't work (it won't on a 267 board) set the watchdog to expire as
+     * soon as possible and reset the system.
 	 */
-	__raw_writel(WDOG_CONTROL_REG_WDT_EN_MASK,
+    pr_warn("Shutdown via external circuitry failed, trying internal watchdog...\n");
+    __raw_writel(WDOG_CONTROL_REG_WDT_EN_MASK,
 	       IO_ADDRESS(PICOXCELL_WDOG_BASE + WDOG_CONTROL_REG_OFFSET));
 	__raw_writel(0, IO_ADDRESS(PICOXCELL_WDOG_BASE +
 			     WDOG_TIMEOUT_RANGE_REG_OFFSET));
