@@ -51,12 +51,16 @@
 	do {					\
 		mutex_unlock(s->hwlock);	\
 	} while (0)
-#endif
-
+/* ih3: Bit of a hack - I don't think phy_priv should be in here, as it looks like something
+ * private to ksz846x.c, so hide it from external modules that want to use this 'common' header
+ * by putting it in an #else clause so it is only processed if SW_R8 is already defined (yuk!).
+ */
+#else
 struct phy_priv {
 	int ptp_irq;
 	int ptp_using;
 	struct ksz_port port;
 };
+#endif
 
 #endif

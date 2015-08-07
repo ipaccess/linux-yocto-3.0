@@ -116,6 +116,14 @@ config MICREL_KSZ8463
 	---help---
 	  Supports the Micrel KSZ8463 switch.
 
+config MICREL_KSZ8463_EMBEDDED
+	bool "Micrel KSZ8463 switch support in macb"
+	depends on MACB && MICREL_KSZ8463 = n
+	select KSZ8463_SPI
+	select MICREL_SWITCH_EMBEDDED
+	---help---
+	  Supports the Micrel KSZ8463 switch used with KSZ8692.
+
 config MICREL_KSZ8463_PTP
 	bool "1588 PTP support"
 	depends on MICREL_KSZ8463 || MICREL_KSZ8463_EMBEDDED

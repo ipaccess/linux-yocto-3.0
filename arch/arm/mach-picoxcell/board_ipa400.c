@@ -335,6 +335,7 @@ static struct spi_board_info ipa400_spi_board_info[] __initdata = {
 		.max_speed_hz	= 1000000, /* 1MHz */
 		.bus_num	= 0,
 		.chip_select	= 3,
+		.irq = IRQ_GPIO6,
 	},
     {   // spidev driver allows user space access to bus
         .modalias = "spidev",

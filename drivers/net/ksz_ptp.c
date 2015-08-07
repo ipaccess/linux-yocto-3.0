@@ -484,11 +484,19 @@ static inline void unsyntonize_clk(void *ptpdev)
 
 static void syntonize_clk(void *ptpdev)
 {
-	u16 data;
+	/*
+	 * ih3: Nobble trimming of clock inside Micrel switch.
+	 *
+	 *      We are going to trim the OCXO from the ptpd2 daemon instead.
+	 */
 
-	data = ptp_read(ptpdev, ADDR_16, PTP_CLK_CTRL);
-	data |= PTP_CLK_ADJ_ENABLE;
-	ptp_write(ptpdev, ADDR_16, PTP_CLK_CTRL, data);
+	unsyntonize_clk(ptpdev);
+
+//	u16 data;
+
+//	data = ptp_read(ptpdev, ADDR_16, PTP_CLK_CTRL);
+//	data |= PTP_CLK_ADJ_ENABLE;
+//	ptp_write(ptpdev, ADDR_16, PTP_CLK_CTRL, data);
 }  /* syntonize_clk */
 
 static u16 get_ptp_delay(void *ptpdev, int port, int reg)
@@ -1697,6 +1705,7 @@ static void adj_cur_time(struct ptp_info *ptp)
 {
 	if (ptp->adjust_offset || ptp->adjust_sec)
 		synchronize_clk(ptp);
+
 	generate_tx_event(ptp, ptp->pps_gpo);
 	if (ptp->adjust_sec) {
 		struct timespec ts;
@@ -1769,7 +1778,6 @@ static void adj_clock(struct work_struct *work)
 	struct ptp_utime cur;
 
 	ptp_acquire(ptp);
-
 	if (!(ptp->features & PTP_ADJ_SEC)) {
 		/* Need to adjust second. */
 		if (abs(ptp->adjust_sec) > 1) {
@@ -1821,6 +1829,7 @@ static void syntonize(struct work_struct *work)
 {
 	struct ptp_info *ptp = container_of(work, struct ptp_info, synt_clk);
 
+	printk("ih3: syntonize() called <---------------------!!!!!!!!!!!!!!!!!\n");
 	if (ptp_acquire(ptp)) {
 #ifdef PTP_SPI
 		queue_work(ptp->access, &ptp->synt_clk);
@@ -1855,14 +1864,16 @@ static void ptp_start(struct ptp_info *ptp, int init)
 	struct ptp_utime t;
 #endif
 
-	mutex_lock(ptp->hwlock);
+	if (ptp->hwlock)
+		mutex_lock(ptp->hwlock);
 	data = ptp_read(ptpdev, ADDR_16, PTP_MSG_CONF1);
 	if (data == ptp->mode) {
 		ptp->cfg = ptp_read(ptpdev, ADDR_16, PTP_MSG_CONF2);
 		ptp->domain = ptp_read(ptpdev, ADDR_16, PTP_DOMAIN_VERSION) &
 			PTP_DOMAIN_MASK;
 		if (!init) {
-			mutex_unlock(ptp->hwlock);
+			if (ptp->hwlock)
+				mutex_unlock(ptp->hwlock);
 			return;
 		}
 	} else if (!init)
@@ -1880,7 +1891,10 @@ static void ptp_start(struct ptp_info *ptp, int init)
 	ptp_write(ptpdev, ADDR_16, PTP_MSG_CONF2, ptp->cfg);
 	ptp_write(ptpdev, ADDR_16, TRIG_INT_ENABLE, ptp->trig_intr);
 	ptp_write(ptpdev, ADDR_16, TS_INT_ENABLE, ptp->ts_intr);
-	mutex_unlock(ptp->hwlock);
+	if (ptp->hwlock)
+		mutex_unlock(ptp->hwlock);
+	prepare_pps(ptp);
+
 #if 1
 	ts = ktime_to_timespec(ktime_get_real());
 	t.sec = ts.tv_sec;
@@ -1890,7 +1904,7 @@ static void ptp_start(struct ptp_info *ptp, int init)
 	ptp->cur_time = t;
 	ptp_release(ptp);
 #endif
-	prepare_pps(ptp);
+
 }  /* ptp_start */
 
 static void ptp_stop(struct ptp_info *ptp)
@@ -1908,12 +1922,14 @@ static void ptp_stop(struct ptp_info *ptp)
 	flush_work(&ptp->synt_clk);
 	flush_workqueue(ptp->access);
 #endif
-	mutex_lock(ptp->hwlock);
+	if (ptp->hwlock)
+		mutex_lock(ptp->hwlock);
 	ptp_write(ptp->ptpdev, ADDR_16, REG_RESET_CTRL,
 		GLOBAL_SOFTWARE_RESET);
 	ptp_write(ptp->ptpdev, ADDR_16, REG_RESET_CTRL, 0);
 	ptp->ptp_synt = false;
-	mutex_unlock(ptp->hwlock);
+	if (ptp->hwlock)
+		mutex_unlock(ptp->hwlock);
 }  /* ptp_stop */
 
 static void init_tx_ts(struct ptp_tx_ts *ts)
@@ -1967,7 +1983,8 @@ static void ptp_init_state(struct ptp_info *ptp)
 		init_tx_ts(&ptp->tx_sync[port]);
 		init_tx_ts(&ptp->tx_dreq[port]);
 		init_tx_ts(&ptp->tx_resp[port]);
-		mutex_lock(ptp->hwlock);
+		if (ptp->hwlock)
+			mutex_lock(ptp->hwlock);
 		reg = PTP_PORT1_XDELAY_TIMESTAMP_L + PTP_PORT_INTERVAL(port);
 		ptp->xdelay_ts[port] = ptp_read(ptpdev, ADDR_32, reg);
 		reg = PTP_PORT1_PDRESP_TIMESTAMP_L + PTP_PORT_INTERVAL(port);
@@ -1977,7 +1994,8 @@ static void ptp_init_state(struct ptp_info *ptp)
 		ptp->asym_delay[port] = get_ptp_asym(ptpdev, port);
 		ptp->peer_delay[port] = get_ptp_link(ptpdev, port);
 		set_ptp_link(ptpdev, port, 0);
-		mutex_unlock(ptp->hwlock);
+		if (ptp->hwlock)
+			mutex_unlock(ptp->hwlock);
 		dbg_msg("%d = %d %d %d; %d\n", port,
 			ptp->rx_latency[port],
 			ptp->tx_latency[port],
@@ -2026,11 +2044,13 @@ static void ptp_exit_state(struct ptp_info *ptp)
 	if (ptp->mode & PTP_MASTER) {
 		u16 data;
 
-		mutex_lock(ptp->hwlock);
+		if (ptp->hwlock)
+			mutex_lock(ptp->hwlock);
 		data = ptp_read(ptp->ptpdev, ADDR_16, PTP_MSG_CONF1);
 		data &= ~PTP_MASTER;
 		ptp_write(ptp->ptpdev, ADDR_16, PTP_MSG_CONF1, data);
-		mutex_unlock(ptp->hwlock);
+		if (ptp->hwlock)
+			mutex_unlock(ptp->hwlock);
 		ptp->mode &= ~PTP_MASTER;
 		ptp->def_mode &= ~PTP_MASTER;
 	}
@@ -2343,8 +2363,8 @@ static void handle_sync(struct ptp_info *ptp, struct ptp_msg *msg,
 	int asym_delay;
 
 	rx.nsec = ntohl(msg->data.sync.originTimestamp.nsec);
-	rx.sec = ntohl(msg->data.sync.originTimestamp.sec_lo);
-	sec_hi = ntohl(msg->data.sync.originTimestamp.sec_hi);
+	rx.sec = ntohl(msg->data.sync.originTimestamp.sec.lo);
+	sec_hi = ntohl(msg->data.sync.originTimestamp.sec.hi);
 
 	ptp->master_port = ptp->in_port;
 
@@ -2370,8 +2390,8 @@ static void handle_follow_up(struct ptp_info *ptp, struct ptp_msg *msg,
 	u32 sec_hi;
 
 	rx.nsec = ntohl(msg->data.follow_up.preciseOriginTimestamp.nsec);
-	rx.sec = ntohl(msg->data.follow_up.preciseOriginTimestamp.sec_lo);
-	sec_hi = ntohl(msg->data.follow_up.preciseOriginTimestamp.sec_hi);
+	rx.sec = ntohl(msg->data.follow_up.preciseOriginTimestamp.sec.lo);
+	sec_hi = ntohl(msg->data.follow_up.preciseOriginTimestamp.sec.hi);
 
 	ptp->corr_follow_up = corr64;
 
@@ -2551,9 +2571,10 @@ static int proc_ptp_tx(struct ptp_info *ptp, struct ptp_msg *msg)
 static struct ptp_msg *parse_ptp_msg(struct net_device *dev,
 	struct sk_buff *skb, struct ptp_id *id, int rx)
 {
-	struct dev_priv *priv = netdev_priv(dev);
-	struct dev_info *hw_priv = priv->adapter;
-	struct ptp_info *ptp = &hw_priv->ptp_hw;
+	// ih3: NOTE!!! macb specific stuff here, but then it's the same in the Micrel example code.
+	struct macb *bp = netdev_priv(dev);
+//	struct dev_info *hw_priv = priv->adapter;
+	struct ptp_info *ptp = bp->ptp.ptpdev;
 	struct ethhdr *eth = (struct ethhdr *) skb->data;
 	struct vlan_ethhdr *vlan = (struct vlan_ethhdr *) skb->data;
 	struct iphdr *iph = NULL;
@@ -3033,6 +3054,7 @@ static void get_rx_tstamp(struct ptp_info *ptp, struct sk_buff *skb)
 	msg = check_ptp_event(skb);
 	if (!msg)
 		return;
+
 	ts.timestamp = ntohl(msg->hdr.reserved3);
 	update_ts(&ts, ptp->cur_time.sec);
 	if (shhwtstamps) {
@@ -3490,6 +3512,26 @@ static int find_avail_tx_unit(struct ptp_info *ptp, int total, int *unit)
 	*unit = first;
 	return 0;
 }  /* find_avail_tx_unit */
+
+static int proc_dev_tx_change_cycle(struct ptp_dev_info *info, u8 *data)
+{
+	struct ptp_info *ptp = info->ptp;
+	struct ptp_tso_options *cmd = (struct ptp_tso_options *) data;
+	void *ptpdev = ptp->ptpdev;
+
+	int reg;
+
+	ptp_acquire(ptp);
+
+	/* Config cycle width. */
+	reg = TRIGn_CYCLE_WIDTH_L(cmd->tso);
+	ptp_write(ptpdev, ADDR_32, reg + 2, cmd->cycle >> 16);
+	ptp_write(ptpdev, ADDR_32, reg, cmd->cycle);
+
+	ptp_release(ptp);
+
+	return 0;
+}
 
 static int proc_dev_tx_event(struct ptp_dev_info *info, u8 *data)
 {
@@ -4047,7 +4089,7 @@ proc_chk_trig_intr:
 	if (!status)
 		goto proc_chk_ts_intr;
 #ifdef DBG_RX_INTR
-	printk(KERN_DEBUG "ts_irq: %x\n", status);
+	printk(KERN_DEBUG "trig_irq: %x\n", status);
 #endif
 
 	ptp_write(ptpdev, ADDR_16, TRIG_INT_STATUS, status);
@@ -4706,11 +4748,13 @@ static int chk_ioctl_size(int len, int size, int additional, int *req_size,
 static u8 eth_pdelay[] = { 0x01, 0x80, 0xC2, 0x00, 0x00, 0x0E };
 static u8 eth_others[] = { 0x01, 0x1B, 0x19, 0x00, 0x00, 0x00 };
 
-static int proc_ptp_eth_msg(struct dev_info *hw_priv, int len, int *req_size,
+// ih3: NOTE!!! macb specific stuff here, but then it's the same in the Micrel example code.
+static int proc_ptp_eth_msg(struct macb *bp, int len, int *req_size,
 	void *param)
 {
+
 	int size;
-	u32 overrides;
+//	u32 overrides;
 	struct sk_buff *skb;
 	struct ptp_msg_hdr *hdr = param;
 	int ret = 0;
@@ -4739,9 +4783,9 @@ static int proc_ptp_eth_msg(struct dev_info *hw_priv, int len, int *req_size,
 	}
 	skb->data[12] = 0x88;
 	skb->data[13] = 0xF7;
-	skb->dev = hw_priv->dev;
+	skb->dev = bp->dev;
 	skb->len = len + 14;
-	memcpy(&skb->data[6], hw_priv->hw.mac_addr, 6);
+	memcpy(&skb->data[6], DEFAULT_MAC_ADDRESS, 6); // ih3: Temporary - get real switch MAC address from.... somewhere!
 	switch (hdr->messageType) {
 	case PDELAY_REQ_MSG:
 	case PDELAY_RESP_MSG:
@@ -4752,13 +4796,13 @@ static int proc_ptp_eth_msg(struct dev_info *hw_priv, int len, int *req_size,
 		memcpy(skb->data, eth_others, 6);
 		break;
 	}
-	overrides = hw_priv->hw.overrides;
-	hw_priv->hw.overrides &= ~TX_DROP;
-	if (netdev_tx(skb, skb->dev)) {
+	// overrides = hw_priv->hw.overrides;  // ih3: Work out what this is for
+	// hw_priv->hw.overrides &= ~TX_DROP;
+	if (macb_start_xmit(skb, skb->dev)) {
 		dev_kfree_skb(skb);
 		ret = -EFAULT;
 	}
-	hw_priv->hw.overrides = overrides;
+	// hw_priv->hw.overrides = overrides;  // ih3: See above - work out what this is for
 
 proc_eth_msg_done:
 	return ret;
@@ -4798,11 +4842,13 @@ static void proc_ptp_work(struct work_struct *work)
 			break;
 		case DEV_INFO_RESET:
 			reg = parent->option;
-			mutex_lock(ptp->hwlock);
+			if (ptp->hwlock)
+				mutex_lock(ptp->hwlock);
 			ptp_write(ptp->ptpdev, ADDR_16, REG_RESET_CTRL,
 				1 << reg);
 			ptp_write(ptp->ptpdev, ADDR_16, REG_RESET_CTRL, 0);
-			mutex_unlock(ptp->hwlock);
+			if (ptp->hwlock)
+				mutex_unlock(ptp->hwlock);
 			break;
 		default:
 			result = DEV_IOC_INVALID_CMD;
@@ -4842,14 +4888,20 @@ static void proc_ptp_work(struct work_struct *work)
 			break;
 		case DEV_PTP_REG:
 			reg = parent->option;
-			mutex_lock(ptp->hwlock);
+			if (ptp->hwlock)
+				mutex_lock(ptp->hwlock);
 			ptp_write(ptp->ptpdev, ADDR_16, reg & 0xffff,
 				reg >> 16);
-			mutex_unlock(ptp->hwlock);
+			if (ptp->hwlock)
+				mutex_unlock(ptp->hwlock);
 			break;
 		case DEV_PTP_PEER_DELAY:
 			port = parent->option;
 			result = proc_ptp_set_peer_delay(ptp, port, data);
+			break;
+		case DEV_PTP_CHANGE_CYCLE:
+			result = proc_dev_tx_change_cycle(info, data);
+			parent->output = *data;
 			break;
 		default:
 			result = DEV_IOC_INVALID_CMD;
@@ -4880,9 +4932,11 @@ static void proc_ptp_work(struct work_struct *work)
 			break;
 		case DEV_PTP_REG:
 			reg = parent->option;
-			mutex_lock(ptp->hwlock);
+			if (ptp->hwlock)
+				mutex_lock(ptp->hwlock);
 			parent->output = ptp_read(ptp->ptpdev, ADDR_16, reg);
-			mutex_unlock(ptp->hwlock);
+			if (ptp->hwlock)
+				mutex_unlock(ptp->hwlock);
 			break;
 		case DEV_PTP_PEER_DELAY:
 			port = parent->option;
@@ -4894,6 +4948,7 @@ static void proc_ptp_work(struct work_struct *work)
 		result = DEV_IOC_INVALID_CMD;
 		break;
 	}
+
 	parent->result = result;
 	parent->used = false;
 	complete(&parent->done);
@@ -4937,6 +4992,7 @@ static int proc_ptp_hw_access(struct ptp_info *ptp, int cmd, int subcmd,
 	ret = work->result;
 	if (DEV_IOC_OK == ret && DEV_CMD_GET == work->cmd)
 		memcpy(data, work->param.data, len);
+
 	*output = work->output;
 
 hw_access_end:
@@ -4958,200 +5014,11 @@ static void init_ptp_work(struct ptp_info *ptp)
 	}
 }  /* init_ptp_work */
 
-#define PTP_ENABLE_TXTS		SIOCDEVPRIVATE
-#define PTP_DISABLE_TXTS	(SIOCDEVPRIVATE + 1)
-#define PTP_ENABLE_RXTS		(SIOCDEVPRIVATE + 2)
-#define PTP_DISABLE_RXTS	(SIOCDEVPRIVATE + 3)
-#define PTP_GET_TX_TIMESTAMP	(SIOCDEVPRIVATE + 4)
-#define PTP_GET_RX_TIMESTAMP	(SIOCDEVPRIVATE + 5)
-#define PTP_SET_TIME		(SIOCDEVPRIVATE + 6)
-#define PTP_GET_TIME		(SIOCDEVPRIVATE + 7)
-#define PTP_SET_FIPER_ALARM	(SIOCDEVPRIVATE + 8)
-#define PTP_SET_ADJ		(SIOCDEVPRIVATE + 9)
-#define PTP_GET_ADJ		(SIOCDEVPRIVATE + 10)
-#define PTP_CLEANUP_TS		(SIOCDEVPRIVATE + 11)
-#define PTP_ADJ_TIME		(SIOCDEVPRIVATE + 12)
-
-struct ixxat_ptp_time {
-	/* just 48 bit used */
-	u64 sec;
-	u32 nsec;
-};
-
-struct ixxat_ptp_ident {
-	u8 vers;
-	u8 mType;
-	u16 netwProt;
-	u16 seqId;
-	struct ptp_port_identity portId;
-} __packed;
-
-/* needed for timestamp data over ioctl */
-struct ixxat_ptp_data {
-	struct ixxat_ptp_ident ident;
-	struct ixxat_ptp_time ts;
-};
-
-static int ixxat_ptp_ioctl(struct ptp_info *ptp, unsigned int cmd,
-	struct ifreq *ifr)
-{
-	struct ixxat_ptp_time ptp_time;
-	struct ixxat_ptp_data ptp_data;
-	struct ptp_clk_options clk_opt;
-	int output;
-	s64 scaled_nsec;
-	struct ptp_ts ts;
-	struct ptp_tx_ts *tx;
-	int drift;
-	int err = 0;
-	int port;
-
-	switch (cmd) {
-	case PTP_ENABLE_TXTS:
-		ptp->tx_en |= 2;
-		break;
-	case PTP_DISABLE_TXTS:
-		ptp->tx_en &= ~2;
-		break;
-	case PTP_ENABLE_RXTS:
-		ptp->rx_en |= 2;
-		break;
-	case PTP_DISABLE_RXTS:
-		ptp->rx_en &= ~2;
-		break;
-	case PTP_GET_TX_TIMESTAMP:
-		if (copy_from_user(&ptp_data, ifr->ifr_data, sizeof(ptp_data)))
-			return -EFAULT;
-
-		err = -EINVAL;
-#if 0
-		dbg_msg(" ts: %x %x %x %04x %02x:%02x:%02x:%02x:%02x:%02x-%d\n",
-			ptp_data.ident.vers,
-			ptp_data.ident.mType,
-			ptp_data.ident.netwProt,
-			ptp_data.ident.seqId,
-			ptp_data.ident.portId.clockIdentity.addr[0],
-			ptp_data.ident.portId.clockIdentity.addr[1],
-			ptp_data.ident.portId.clockIdentity.addr[2],
-			ptp_data.ident.portId.clockIdentity.addr[5],
-			ptp_data.ident.portId.clockIdentity.addr[6],
-			ptp_data.ident.portId.clockIdentity.addr[7],
-			htons(ptp_data.ident.portId.port));
-#endif
-		port = htons(ptp_data.ident.portId.port);
-		if (port < 1 || port > MAX_PTP_PORT)
-			break;
-		port--;
-		tx = proc_get_ts(ptp, port, ptp_data.ident.mType,
-			ptp_data.ident.seqId,
-			ptp_data.ident.portId.clockIdentity.addr,
-			NULL, 0);
-		if (!tx)
-			break;
-		ptp_data.ts.sec = tx->ts.r.sec;
-		ptp_data.ts.nsec = tx->ts.r.nsec;
-		tx->ts.timestamp = 0;
-		tx->req_time = 0;
-		err = copy_to_user(ifr->ifr_data, &ptp_data, sizeof(ptp_data));
-		break;
-	case PTP_GET_RX_TIMESTAMP:
-		if (copy_from_user(&ptp_data, ifr->ifr_data, sizeof(ptp_data)))
-			return -EFAULT;
-
-		ts.timestamp = ptp_data.ts.nsec;
-		if (ts.timestamp)
-			update_ts(&ts, ptp->cur_time.sec);
-		else {
-			ptp_acquire(ptp);
-			get_ptp_time(ptp->ptpdev, &ts.t);
-			ptp_release(ptp);
-		}
-		ptp_data.ts.sec = ts.t.sec;
-		ptp_data.ts.nsec = ts.t.nsec;
-		err = copy_to_user(ifr->ifr_data, &ptp_data, sizeof(ptp_data));
-		break;
-	case PTP_GET_TIME:
-	{
-		struct timespec ts;
-		struct ptp_time cur_time;
-		struct ptp_time sys_time;
-
-		ts = ktime_to_timespec(ktime_get_real());
-		sys_time.sec = ts.tv_sec;
-		sys_time.nsec = ts.tv_nsec;
-		calc_diff(&ptp->time_diff, &sys_time, &cur_time);
-		ptp_time.sec = cur_time.sec;
-		ptp_time.nsec = cur_time.nsec;
-		err = proc_ptp_hw_access(ptp,
-			DEV_CMD_GET, DEV_PTP_CLK, 0,
-			&clk_opt, sizeof(clk_opt), NULL, &output,
-			true);
-		ptp_time.sec = clk_opt.sec;
-		ptp_time.nsec = clk_opt.nsec;
-		err = copy_to_user(ifr->ifr_data, &ptp_time, sizeof(ptp_time));
-		break;
-	}
-	case PTP_SET_TIME:
-		if (copy_from_user(&ptp_time, ifr->ifr_data, sizeof(ptp_time)))
-			return -EFAULT;
-		output = 0;
-		clk_opt.sec = (u32) ptp_time.sec;
-		clk_opt.nsec = ptp_time.nsec;
-		err = proc_ptp_hw_access(ptp,
-			DEV_CMD_PUT, DEV_PTP_CLK, output,
-			&clk_opt, sizeof(clk_opt), NULL, &output,
-			true);
-		break;
-	case PTP_ADJ_TIME:
-		if (copy_from_user(&scaled_nsec, ifr->ifr_data, sizeof(s64)))
-			return -EFAULT;
-		convert_scaled_nsec(scaled_nsec, SCALED_NANOSEC_SHIFT,
-			&ptp->adjust_sec, &ptp->adjust_offset);
-		if (ptp->adjust_offset < 0 || ptp->adjust_sec < 0) {
-			output = 1;
-			clk_opt.sec = -ptp->adjust_sec;
-			clk_opt.nsec = -ptp->adjust_offset;
-		} else {
-			output = 2;
-			clk_opt.sec = ptp->adjust_sec;
-			clk_opt.nsec = ptp->adjust_offset;
-		}
-		clk_opt.interval = 0;
-		err = proc_ptp_hw_access(ptp,
-			DEV_CMD_PUT, DEV_PTP_CLK, output,
-			&clk_opt, sizeof(clk_opt), NULL, &output,
-			true);
-		break;
-	case PTP_SET_ADJ:
-		if (copy_from_user(&drift, ifr->ifr_data, sizeof(drift)))
-			return -EFAULT;
-		output = 1;
-		clk_opt.sec = clk_opt.nsec = 0;
-		clk_opt.drift = drift;
-		clk_opt.interval = NANOSEC_IN_SEC;
-		err = proc_ptp_hw_access(ptp,
-			DEV_CMD_PUT, DEV_PTP_CLK, output,
-			&clk_opt, sizeof(clk_opt), NULL, &output,
-			true);
-		break;
-	case PTP_GET_ADJ:
-		drift = ptp->drift_set;
-		err = copy_to_user(ifr->ifr_data, &drift, sizeof(drift));
-		break;
-	case PTP_CLEANUP_TS:
-		break;
-	case PTP_SET_FIPER_ALARM:
-		break;
-	default:
-		err = -EOPNOTSUPP;
-	}
-	return err;
-}
-
 static int ptp_dev_req(struct ptp_info *ptp, char *arg,
 	struct ptp_dev_info *info)
 {
-	struct dev_info *hw_priv = container_of(ptp, struct dev_info, ptp_hw);
+	// ih3: NOTE!!! macb specific stuff here, but then it's the same in the Micrel example code.
+	struct macb *bp = container_of(ptp, struct macb, ptp);
 	struct ksz_request *req = (struct ksz_request *) arg;
 	int len;
 	int maincmd;
@@ -5163,6 +5030,13 @@ static int ptp_dev_req(struct ptp_info *ptp, char *arg,
 	struct ptp_dev_info *dev;
 	int err = 0;
 	int result = 0;
+
+	/* ih3: Make sure current time is up to date.
+	 *      This relies on the ptpd daemon calling ioctls regularly, so is only a
+	 *      hack to prove the issue. Need to find a better way.
+	 */
+	if (ptp->ptpdev)
+		get_ptp_time(ptp->ptpdev, &ptp->cur_time);
 
 	/* Assume success. */
 	result = DEV_IOC_OK;
@@ -5222,7 +5096,7 @@ static int ptp_dev_req(struct ptp_info *ptp, char *arg,
 			ptp_setup_udp_msg(info, data, 4, NULL, NULL);
 			break;
 		case DEV_INFO_MSG:
-			result = proc_ptp_eth_msg(hw_priv, len, &req_size,
+			result = proc_ptp_eth_msg(bp, len, &req_size,
 				&req->param);
 			break;
 		case DEV_INFO_RESET:
@@ -5253,6 +5127,21 @@ static int ptp_dev_req(struct ptp_info *ptp, char *arg,
 			break;
 		case DEV_PTP_TEVT:
 			if (chk_ioctl_size(len, sizeof(struct ptp_tsi_options),
+					sizeof(struct ksz_request),
+					&req_size, &result, &req->param, data))
+				goto dev_ioctl_resp;
+			if (!info) {
+				err = -EFAULT;
+				goto dev_ioctl_done;
+			}
+			result = proc_ptp_hw_access(ptp,
+				maincmd, subcmd, 0,
+				data, len, info, &output,
+				true);
+			__put_user(*data, &req->output);
+			break;
+		case DEV_PTP_CHANGE_CYCLE:
+			if (chk_ioctl_size(len, sizeof(struct ptp_tso_options),
 					sizeof(struct ksz_request),
 					&req_size, &result, &req->param, data))
 				goto dev_ioctl_resp;
@@ -5486,6 +5375,10 @@ static int ptp_dev_req(struct ptp_info *ptp, char *arg,
 				goto dev_ioctl_done;
 			}
 			break;
+		default:
+			result = DEV_IOC_INVALID_CMD;
+			break;
+
 		}
 		break;
 	default:
@@ -5502,6 +5395,7 @@ dev_ioctl_resp:
 		err = result;
 
 dev_ioctl_done:
+
 	return err;
 }  /* ptp_dev_req */
 
@@ -5704,7 +5598,8 @@ static void ptp_check(struct ptp_info *ptp)
 	struct ptp_utime now;
 
 	ptp->features |= PTP_ADJ_HACK;
-	mutex_lock(ptp->hwlock);
+	if (ptp->hwlock)
+		mutex_lock(ptp->hwlock);
 	get_ptp_time(ptp->ptpdev, &cur);
 	adjust_ptp_time(ptp->ptpdev, true, 10, 0, true);
 	get_ptp_time(ptp->ptpdev, &now);
@@ -5714,12 +5609,20 @@ static void ptp_check(struct ptp_info *ptp)
 		adjust_ptp_time(ptp->ptpdev, false, 10, 0, true);
 		ptp->version = 1;
 	}
-	mutex_unlock(ptp->hwlock);
+	if (ptp->hwlock)
+		mutex_unlock(ptp->hwlock);
+
 }  /* ptp_check */
 
 static void ptp_init(struct ptp_info *ptp, u8 *mac_addr)
 {
 	int i;
+
+	if (!ptp)
+	{
+		printk("ih3: ptp_init() - ptp pointer is NULL!\n");
+		return;
+	}
 
 #ifdef PTP_SPI
 	ptp->access = create_singlethread_workqueue("ptp_access");
@@ -5808,10 +5711,12 @@ static void ptp_init(struct ptp_info *ptp, u8 *mac_addr)
 
 static void ptp_exit(struct ptp_info *ptp)
 {
-	mutex_lock(ptp->hwlock);
+	if (ptp->hwlock)
+		mutex_lock(ptp->hwlock);
 	ptp_write(ptp->ptpdev, ADDR_16, TRIG_INT_ENABLE, 0);
 	ptp_write(ptp->ptpdev, ADDR_16, TS_INT_ENABLE, 0);
-	mutex_unlock(ptp->hwlock);
+	if (ptp->hwlock)
+		mutex_unlock(ptp->hwlock);
 
 #ifdef PTP_SPI
 	if (ptp->access) {

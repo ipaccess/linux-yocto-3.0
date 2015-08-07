@@ -30,6 +30,12 @@
 #include "ks886xReg.h"
 
 /*
+ *  KSZ8463 PHY ID
+ */
+#define KSZ8463_PHYID1                  0x0022
+#define KSZ8463_PHYID2                  0x1430
+
+/*
  * Trigger Output Registers
  * (Bank 1, Offset 0x200 - 0x398)
  */
@@ -354,6 +360,9 @@
 #define   TS_PORT1_INT_XDELAY        (1 << 13)
 /* Enable port1 egress SYNC TS interrupt */
 #define   TS_PORT1_INT_SYNC          (1 << 12)
+
+#define ANA_CNTRL_1                0x748
+#define ANA_CNTRL_1_LDO_OFF          (1 << 7)
 
 #endif
 

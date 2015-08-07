@@ -28,6 +28,8 @@ static void __iomem *gpio_irq_base;
 #define INT_STATUS_REG		(gpio_irq_base + GPIO_INT_STATUS_REG_OFFSET)
 #define EOI_REG			(gpio_irq_base + GPIO_PORT_A_EOI_REG_OFFSET)
 
+static void armgpio_irq_unmask(struct irq_data *d);
+
 static void armgpio_irq_enable(struct irq_data *d)
 {
 	int gpio = irq_to_gpio(d->irq);
@@ -37,6 +39,9 @@ static void armgpio_irq_enable(struct irq_data *d)
 	val = readl(port_inten);
 	val |= (1 << gpio);
 	writel(val, port_inten);
+
+	/* ih3: And make sure the interrupt isn't masked */
+	armgpio_irq_unmask(d);
 }
 
 static void armgpio_irq_disable(struct irq_data *d)
@@ -195,10 +200,11 @@ void __init armgpio_irq_init(void)
 
 	writel(0, INT_EN_REG);
 	writel(~0, EOI_REG);
-	for (i = IRQ_GPIO0; i <= IRQ_GPIO7; ++i)
+	for (i = IRQ_GPIO0; i <= IRQ_GPIO7; ++i) {
 		irq_set_chip_and_handler(i, &armgpio_level_irqchip,
 					 handle_level_irq);
-
+		set_irq_flags(i, IRQF_VALID);
+	}
 	for (i = __IRQ_GPIO0; i <= __IRQ_GPIO7; ++i) {
 		irq_set_chained_handler(i, gpio_irq_handler);
 		set_irq_flags(i, IRQF_VALID);

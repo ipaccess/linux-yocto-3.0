@@ -506,6 +506,15 @@
 #define   SWITCH_802_1P_MAP_SHIFT     2
 
 #define REG_SWITCH_CTRL_7          0x0E        /* SGCR7 */
+#define   SWITCH_LED_MASK            (3 << 8)
+/* LED1: Speed       LED2: Link & Activity  (default) */
+#define   SWITCH_LED_SPD_LNKACT      (0 << 8)
+/* LED1: Activity    LED2: Link */
+#define   SWITCH_LED_ACT_LNK         (1 << 8)
+/* LED1: Full Duplex LED2: Link & Activity */
+#define   SWITCH_LED_DUP_LNKACT      (2 << 8)
+/* LED1: Full Duplex LED2: Link */
+#define   SWITCH_LED_DUP_LNK         (3 << 8)
 /* enable tx unknow DA pkts to specified port */
 #define   SWITCH_UNKNOWN_DA_ENABLE   (1 << 7)
 /* Set driver strength to 16mA */

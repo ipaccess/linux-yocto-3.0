@@ -32,7 +32,13 @@
 #include <linux/platform_device.h>
 #include <linux/phy.h>
 
+#if defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
+#include "ks846xReg.h"
+#include "ksz_ptp.h"
+#endif
+
 #include "macb.h"
+
 #define MACB_SKB_SIZE		(2*1024)
 #define RX_BUFFER_SIZE		1536
 #define RX_RING_SIZE		512
@@ -63,7 +69,9 @@
 
 typedef enum {MII_PHY, SPI_PHY} t_phy_bus;
 
-#if defined(CONFIG_MICREL_KSZ8463)
+static int macb_start_xmit(struct sk_buff *skb, struct net_device *dev);
+
+#if defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
 
 static int micrel_sw_check(void)
 {
@@ -71,7 +79,7 @@ static int micrel_sw_check(void)
 	int phy_mode;
 	char phy_id[MII_BUS_ID_SIZE];
 	char bus_id[MII_BUS_ID_SIZE];
-	struct net_device netdev;
+	static struct net_device netdev;  /* static to keep it off the stack! */
 	struct phy_device *phydev;
 	int ret = 0;
 
@@ -111,6 +119,87 @@ static struct phy_device *micrel_sw_attach(struct net_device *netdev)
 	}
 	return NULL;
 }
+
+enum {
+	DEV_IOC_OK,
+	DEV_IOC_INVALID_SIZE,
+	DEV_IOC_INVALID_CMD,
+	DEV_IOC_INVALID_LEN,
+	DEV_IOC_UNIT_UNAVAILABLE,
+	DEV_IOC_UNIT_USED,
+	DEV_IOC_UNIT_ERROR,
+};
+
+struct ksz_request {
+	int size;
+	int cmd;
+	int subcmd;
+	int output;
+	int result;
+	union {
+		u8 data[0];
+		int num[0];
+	} param;
+};
+
+static u8 DEFAULT_MAC_ADDRESS[] = { 0x00, 0x10, 0xA1, 0x86, 0x92, 0x01 };
+
+static void net_ptp_intr(struct net_device *dev);
+
+#include <linux/sched.h>
+#include <linux/if_vlan.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
+
+#include "ksz_common.c"
+
+#if defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
+#include "phy/ksz846x.c"
+#endif
+
+#if defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
+#include "ksz_sw_phy.h"
+#endif
+
+
+static int ptp_read(void *ptpdev, int addr, int reg)
+{
+	struct phy_device *phydev = ptpdev;
+
+	return phy_read(phydev, PHY_REG(addr, reg));
+}  /* ptp_read */
+
+static int ptp_write(void *ptpdev, int addr, int reg, u16 val)
+{
+	struct phy_device *phydev = ptpdev;
+
+	return phy_write(phydev, PHY_REG(addr, reg), val);
+}  /* ptp_write */
+
+static int ptp_acquire(struct ptp_info *ptp)
+{
+	return 0;
+}  /* ptp_acquire */
+
+static void ptp_release(struct ptp_info *ptp)
+{
+}  /* ptp_release */
+
+#include "ksz_ptp.c"
+
+/*
+ * Thunk used by embedded ksz846x driver to call ptp interrupt function.
+ *
+ * The address of the ptp interrupt function, is located in the network
+ * driver data structures, rather than the PHYs data structure.
+ */
+static void net_ptp_intr(struct net_device *dev)
+{
+	struct macb *this_bp = netdev_priv(dev);
+
+	proc_ptp_intr(&this_bp->ptp.proc_ptp_irq);
+}
+
 #endif
 
 static void __macb_set_hwaddr(struct macb *bp)
@@ -273,7 +362,7 @@ static int macb_mii_probe(struct net_device *dev, t_phy_bus phy_bus)
 			return ret;
 		}
 	}
-#if defined(CONFIG_MICREL_KSZ8463)
+#if defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
 	else /* SPI_PHY */
 	{
 		phydev = micrel_sw_attach(dev);
@@ -354,6 +443,10 @@ static int macb_mii_init(struct macb *bp)
 		goto err_out_unregister_bus;
 	}
 
+#if defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
+    bp->ptp.ptpdev = 0;
+#endif
+
 	return 0;
 
 err_out_unregister_bus:
@@ -364,13 +457,14 @@ err_out_free_mdiobus:
 	mdiobus_free(bp->mii_bus);
 err_out:
 
-#if defined(CONFIG_MICREL_KSZ8463)
+#if defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
 /* Didn't find a PHY on the MAC's mdio bus, so look for Micrel PHYs on the SPI bus */
 
     if (micrel_sw_check())
     {
     	if (macb_mii_probe(bp->dev, SPI_PHY) == 0) {
     	    bp->mii_bus = bp->phy_dev->bus;
+    	    bp->ptp.ptpdev = bp->phy_dev;
     		return 0;
     	}
     }
@@ -560,6 +654,10 @@ static int macb_rx_frame(struct macb *bp, unsigned int first_frag,
 		memset(shhwtstamps, 0, sizeof(*shhwtstamps));
 		shhwtstamps->hwtstamp = ns_to_ktime(macb_ts_from_skb(bp, skb));
 	}
+
+#if defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
+	get_rx_tstamp(&bp->ptp, skb); /* Get timestamp added by Micrel switch */
+#endif
 
 	skb->protocol = eth_type_trans(skb, bp->dev);
 
@@ -1478,6 +1576,10 @@ static int macb_open(struct net_device *dev)
 	/* schedule a link state check */
 	phy_start(bp->phy_dev);
 
+#if (defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)) && defined(CONFIG_MICREL_KSZ8463_PTP)
+    if (bp->ptp.ptpdev)
+        ptp_start(&bp->ptp, true);
+#endif
 	netif_start_queue(dev);
 
 	return 0;
@@ -1724,7 +1826,29 @@ static int macb_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 		return -ENODEV;
 
 	if (cmd == SIOCSHWTSTAMP)
+#if (defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)) && defined(CONFIG_MICREL_KSZ8463_PTP)
+	{
+        if (bp->ptp.ptpdev)
+        {
+        	ptp_hwtstamp_ioctl(&bp->ptp, rq);
+			return 0;
+        }
+        else
+        {
+		    return macb_hwstamp_ioctl(dev, rq, cmd);
+        }
+	}
+	else if (cmd == (SIOCDEVPRIVATE + 15) )
+	{
+        if (bp->ptp.ptpdev)
+        {
+        	return ptp_dev_req(&bp->ptp, rq->ifr_data, NULL);
+        }
+	}
+
+#else
 		return macb_hwstamp_ioctl(dev, rq, cmd);
+#endif
 
 	return phy_mii_ioctl(phydev, rq, cmd);
 }
@@ -1872,6 +1996,13 @@ static int __init macb_probe(struct platform_device *pdev)
 		    "(mii_bus:phy_addr=%s, irq=%d)\n", phydev->drv->name,
 		    dev_name(&phydev->dev), phydev->irq);
 
+#if (defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)) && defined(CONFIG_MICREL_KSZ8463_PTP)
+    if (bp->ptp.ptpdev)
+    {
+        ptp_init(&bp->ptp, DEFAULT_MAC_ADDRESS);
+    }
+#endif
+
 	return 0;
 
 err_out_unregister_netdev:
@@ -2000,12 +2131,19 @@ static struct platform_driver macb_driver = {
 
 static int __init macb_init(void)
 {
+#ifdef CONFIG_MICREL_KSZ8463_EMBEDDED
+	ksz846x_init();
+#endif
+
 	return platform_driver_probe(&macb_driver, macb_probe);
 }
 
 static void __exit macb_exit(void)
 {
 	platform_driver_unregister(&macb_driver);
+#ifdef CONFIG_MICREL_KSZ8463_EMBEDDED
+	ksz846x_exit();
+#endif
 }
 
 module_init(macb_init);

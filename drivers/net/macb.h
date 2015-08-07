@@ -571,9 +571,14 @@ struct macb {
 	unsigned int 		speed;
 	unsigned int 		duplex;
 
+#if defined(CONFIG_MICREL_KSZ8463) || defined(CONFIG_MICREL_KSZ8463_EMBEDDED)
+	struct ptp_info		ptp;
+#endif
+
 #ifdef CONFIG_PM
 	u32			save_irq_en;
 #endif
+
 	unsigned long		quirks;
 };
 

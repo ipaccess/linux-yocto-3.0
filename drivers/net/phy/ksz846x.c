@@ -77,7 +77,6 @@ static u8 get_port_state(struct net_device *dev, struct net_device **br_dev);
 
 /* -------------------------------------------------------------------------- */
 
-#ifndef CONFIG_MICREL_SWITCH_EMBEDDED
 enum {
 	PHY_NO_FLOW_CTRL,
 	PHY_FLOW_CTRL,
@@ -124,7 +123,6 @@ struct ksz_dev_attr {
 	struct device_attribute dev_attr;
 	char dev_name[DEV_NAME_SIZE];
 };
-#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -388,7 +386,6 @@ static u32 spi_rdreg32(struct spi_priv *ks, unsigned reg)
 
 /* -------------------------------------------------------------------------- */
 
-#ifndef CONFIG_MICREL_SWITCH_EMBEDDED
 /**
  * delay_micro - delay in microsecond
  * @microsec:	Number of microseconds to delay.
@@ -501,7 +498,6 @@ static int get_num_val(const char *buf)
 		sscanf(buf, "%d", &num);
 	return num;
 }  /* get_num_val */
-#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -658,25 +654,30 @@ static void spi_change(struct work_struct *work)
 	mutex_lock(&ks->lock);
 	status = HW_R(ks, REG_INT_STATUS);
 	status &= ks->intr_mask;
+
 	if (status & INT_PHY) {
 		HW_W(ks, REG_INT_STATUS, INT_PHY);
 		status &= ~INT_PHY;
+		/* ih3: Don't handle PHY here - leave that for the polled state machine.
+		 *      Just clear the interrupt bit.
 		schedule_delayed_work(&ks->link_read, 0);
+		*/
 	}
 	mutex_unlock(&ks->lock);
-	if (dev->adjust_state)
-		dev->adjust_state(dev->attached_dev);
-	else if (status) {
-		mutex_lock(&ks->lock);
-		HW_W(ks, REG_INT_STATUS, status);
-		mutex_unlock(&ks->lock);
-	}
-	priv->ptp_irq = false;
 	mutex_unlock(&ks->hwlock);
+	/*
+	 * Call the PTP interrupt processing via a thunk in the network driver.
+	 */
+	net_ptp_intr(dev->attached_dev);
 
+	priv->ptp_irq = false;
 	atomic_dec(&phydev->irq_disable);
+
 #ifdef USE_LEVEL_INTR
-	enable_irq(phydev->irq);
+	if (phydev->irq > 0)
+	{
+	    enable_irq(phydev->irq);
+	}
 #endif
 }  /* spi_change */
 
@@ -695,7 +696,7 @@ static int spi_start_interrupt(struct phy_device *phydev, const char *name)
 #endif
 			name,
 			phydev) < 0) {
-		printk(KERN_WARNING "%s: Can't get IRQ %d (PHY)\n",
+		printk( KERN_WARNING "%s: Can't get IRQ %d (PHY)\n",
 			phydev->bus->name,
 			phydev->irq);
 		phydev->irq = PHY_POLL;
@@ -1038,7 +1039,7 @@ static void link_read_work(struct work_struct *work)
 				break;
 			}
 	for (i = 0; i < PHY_MAX_ADDR; i++)
-		if (hw_priv->bus->phy_map[i])
+		if (hw_priv->bus->phy_map[i] && hw_priv->bus->phy_map[i]->drv)
 			phy_read_status(hw_priv->bus->phy_map[i]);
 	phydev = hw_priv->phydev;
 	if (phydev->adjust_link)
@@ -1103,6 +1104,7 @@ static int DEVINIT ksz846x_probe(struct spi_device *spi)
 	struct phy_device *phydev;
 	struct phy_priv *priv;
 	u16 id;
+	u16 current_reg;
 	int cnt;
 	int i;
 	int mib_port_count;
@@ -1255,7 +1257,13 @@ static int DEVINIT ksz846x_probe(struct spi_device *spi)
 
 	if (ks->phydev->irq <= 0)
 		return 0;
-	ks->intr_mask = INT_PHY | INT_TIMESTAMP | INT_TRIG_OUTPUT;
+	/*
+	 * ih3: Enable the PTP interrupts, but not the PHY interrupt.
+	 *      Leave the PHY status as polled by PHY API state machine
+	 *
+	 * ks->intr_mask = INT_PHY | INT_TIMESTAMP | INT_TRIG_OUTPUT;
+	 */
+	ks->intr_mask = INT_TIMESTAMP | INT_TRIG_OUTPUT;
 	mutex_lock(&ks->lock);
 	spi_wrreg16(ks, TS_INT_ENABLE, 0);
 	spi_wrreg16(ks, TS_INT_STATUS, 0xffff);
@@ -1268,6 +1276,19 @@ static int DEVINIT ksz846x_probe(struct spi_device *spi)
 		spi_wrreg16(ks, REG_INT_MASK, ks->intr_mask);
 		mutex_unlock(&ks->lock);
 	}
+
+	/* Set the RJ45 green LED to non-flashing link, and yellow LED to activity */
+	current_reg = spi_rdreg16(ks, REG_SWITCH_CTRL_7);
+	current_reg = (current_reg & ~SWITCH_LED_MASK) | SWITCH_LED_ACT_LNK;
+	spi_wrreg16(ks, REG_SWITCH_CTRL_7, current_reg);
+
+	/* Turn off the 1.2V LDO inside the Micrel switch chip
+	 * NOTE: Board MUST provide 1.2V to the switch chip, or this is the end
+	 *       as far as network connectivity is concerned!
+	 */
+	current_reg = spi_rdreg16(ks, ANA_CNTRL_1);
+	current_reg = current_reg | ANA_CNTRL_1_LDO_OFF;
+	spi_wrreg16(ks, ANA_CNTRL_1, current_reg);
 
 	return 0;
 
@@ -1298,6 +1319,50 @@ static int __devexit ksz846x_remove(struct spi_device *spi)
 	return 0;
 }
 
+static int ksz8463_config_init(struct phy_device *phydev)
+{
+    int val;
+    u32 features;
+
+    features = SUPPORTED_MII;
+
+    /* Do we support autonegotiation? */
+    val = phy_read(phydev, MII_BMSR);
+
+    if (val < 0) {
+        return val;
+    }
+
+    if (val & BMSR_ANEGCAPABLE)
+        features |= SUPPORTED_Autoneg;
+
+    if (val & BMSR_100FULL)
+        features |= SUPPORTED_100baseT_Full;
+    if (val & BMSR_100HALF)
+        features |= SUPPORTED_100baseT_Half;
+    if (val & BMSR_10FULL)
+        features |= SUPPORTED_10baseT_Full;
+    if (val & BMSR_10HALF)
+        features |= SUPPORTED_10baseT_Half;
+
+    if (val & BMSR_ESTATEN) {
+        val = phy_read(phydev, MII_ESTATUS);
+
+        if (val < 0)
+            return val;
+
+        if (val & ESTATUS_1000_TFULL)
+            features |= SUPPORTED_1000baseT_Full;
+        if (val & ESTATUS_1000_THALF)
+            features |= SUPPORTED_1000baseT_Half;
+    }
+
+    phydev->supported = features;
+    phydev->advertising = features;
+
+    return 0;
+}
+
 static struct spi_driver ksz846x_driver = {
 	.driver = {
 		.name = "ksz8463",
@@ -1307,13 +1372,45 @@ static struct spi_driver ksz846x_driver = {
 	.remove = __devexit_p(ksz846x_remove),
 };
 
+static struct phy_driver ksz8463_phy_driver = {
+    .phy_id         = (KSZ8463_PHYID1 << 16) | KSZ8463_PHYID2,
+    .phy_id_mask    = ~0x6,
+    .name           = "Micrel KSZ8463",
+    .config_init    = ksz8463_config_init,
+    .features       = PHY_BASIC_FEATURES | SUPPORTED_Pause,
+    .flags          = PHY_HAS_INTERRUPT,
+    .config_aneg    = genphy_config_aneg,
+    .read_status    = genphy_read_status,
+#if 0
+    .ack_interrupt  = ksz8873_ack_interrupt,
+    .config_intr    = ksz8873_config_intr,
+    .did_interrupt  = ksz8873_did_interrupt,
+#endif
+    .driver         = {.owner= THIS_MODULE, },
+};
+
 static int __init ksz846x_init(void)
 {
-	return spi_register_driver(&ksz846x_driver);
+	int ret;
+
+	ret = spi_register_driver(&ksz846x_driver);
+	if (ret)
+	{
+		return ret;
+	}
+
+	ret = phy_driver_register(&ksz8463_phy_driver);
+	if (ret)
+	{
+		spi_unregister_driver(&ksz846x_driver);
+	}
+	return ret;
 }
+
 
 static void __exit ksz846x_exit(void)
 {
+	phy_driver_unregister(&ksz8463_phy_driver);
 	spi_unregister_driver(&ksz846x_driver);
 }
 
